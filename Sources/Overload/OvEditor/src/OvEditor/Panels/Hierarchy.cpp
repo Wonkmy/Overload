@@ -289,6 +289,13 @@ void OvEditor::Panels::Hierarchy::AddActorByInstance(OvCore::ECS::Actor & p_acto
 
 		p_element.first->SetParent(p_actor);
 	};
+
+	auto& addScriptButton = textSelectable.CreateWidget<OvUI::Widgets::Buttons::Button>("O", OvMaths::FVector2{ 20.f, 0 });
+	addScriptButton.idleBackgroundColor = OvUI::Types::Color{ 1.0f, 0.0f, 0.0f };
+	addScriptButton.textColor = OvUI::Types::Color::White;
+
+
+
 	auto& dispatcher = textSelectable.AddPlugin<OvUI::Plugins::DataDispatcher<std::string>>();
 
 	OvCore::ECS::Actor* targetPtr = &p_actor;
