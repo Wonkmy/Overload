@@ -595,6 +595,10 @@ void OvEditor::Core::EditorActions::SelectActor(OvCore::ECS::Actor & p_target)
 	EDITOR_PANEL(Panels::Inspector, "Inspector").FocusActor(p_target);
 }
 
+void OvEditor::Core::EditorActions::SetActorHide(OvCore::ECS::Actor& p_target) {
+	//EDITOR_PANEL(Panels::Inspector, "Inspector").(p_target);
+}
+
 void OvEditor::Core::EditorActions::UnselectActor()
 {
 	EDITOR_PANEL(Panels::Inspector, "Inspector").UnFocus();

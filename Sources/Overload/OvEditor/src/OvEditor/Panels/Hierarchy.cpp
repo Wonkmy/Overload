@@ -294,6 +294,7 @@ void OvEditor::Panels::Hierarchy::AddActorByInstance(OvCore::ECS::Actor & p_acto
 	addScriptButton.idleBackgroundColor = OvUI::Types::Color{ 1.0f, 0.0f, 0.0f };
 	addScriptButton.textColor = OvUI::Types::Color::White;
 
+	addScriptButton.ClickedEvent += EDITOR_BIND(SetActorHide, std::ref(p_actor));
 
 
 	auto& dispatcher = textSelectable.AddPlugin<OvUI::Plugins::DataDispatcher<std::string>>();

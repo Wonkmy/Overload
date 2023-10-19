@@ -203,6 +203,8 @@ namespace OvEditor::Core
 		*/
 		void SelectActor(OvCore::ECS::Actor& p_target);
 
+		void SetActorHide(OvCore::ECS::Actor& p_target);
+
 		/**
 		* Unselect any selected actor and clearing the inspector
 		*/
