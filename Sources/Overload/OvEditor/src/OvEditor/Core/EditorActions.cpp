@@ -134,6 +134,27 @@ void OvEditor::Core::EditorActions::RefreshScripts()
 		OVLOG_INFO("Scripts interpretation succeeded!");
 }
 
+void OvEditor::Core::EditorActions::MigrateScriptsToAssets()
+{
+	// Copy all scripts from the project scripts folder to the project assets folder + "Scripts/"
+	std::filesystem::copy(m_context.projectScriptsPath, m_context.projectAssetsPath + "Scripts\\", std::filesystem::copy_options::recursive);
+	std::filesystem::remove_all(m_context.projectScriptsPath);
+
+	auto previousName = OvTools::Utils::PathParser::MakeNonWindowsStyle(m_context.projectScriptsPath);
+	auto newName = OvTools::Utils::PathParser::MakeNonWindowsStyle(m_context.projectAssetsPath + "Scripts\\");
+
+	for (auto& p : std::filesystem::recursive_directory_iterator(newName))
+	{
+		if (!p.is_directory())
+		{
+			std::string newFileName = GetResourcePath(OvTools::Utils::PathParser::MakeWindowsStyle(p.path().string()));
+			std::string previousFileName = std::filesystem::path{ newFileName }.stem().string();
+
+			PropagateScriptRename(OvTools::Utils::PathParser::MakeWindowsStyle(previousFileName), OvTools::Utils::PathParser::MakeWindowsStyle(newFileName));
+		}
+	}
+}
+
 std::optional<std::string> OvEditor::Core::EditorActions::SelectBuildFolder()
 {
 	OvWindowing::Dialogs::SaveFileDialog dialog("Build location");

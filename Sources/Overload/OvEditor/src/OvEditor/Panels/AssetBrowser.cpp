@@ -1012,17 +1012,20 @@ OvEditor::Panels::AssetBrowser::AssetBrowser
 		);
 	}
 
-	if (!std::filesystem::exists(m_projectScriptFolder))
+	if (std::filesystem::exists(m_projectScriptFolder))
 	{
-		std::filesystem::create_directories(m_projectScriptFolder);
-
 		OvWindowing::Dialogs::MessageBox message
 		(
-			"Scripts folder not found",
-			"The \"Scripts/\" folders hasn't been found in your project directory.\nIt has been automatically generated",
+			"Deprecated scripts folder found.",
+			"A \"Scripts/\" folder was found outside of the \"Assets\" folder, which is now deprecated. Migrating your scripts is recommended.\nDo you want to proceed?",
 			OvWindowing::Dialogs::MessageBox::EMessageType::WARNING,
-			OvWindowing::Dialogs::MessageBox::EButtonLayout::OK
+			OvWindowing::Dialogs::MessageBox::EButtonLayout::YES_NO
 		);
+
+		if (message.GetUserAction() == OvWindowing::Dialogs::MessageBox::EUserAction::YES)
+		{
+			EDITOR_EXEC(MigrateScriptsToAssets());
+		}
 	}
 
 	auto& refreshButton = CreateWidget<Buttons::Button>("Rescan assets");
