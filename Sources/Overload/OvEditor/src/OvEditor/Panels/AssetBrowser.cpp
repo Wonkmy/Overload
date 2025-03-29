@@ -1306,7 +1306,7 @@ void OvEditor::Panels::AssetBrowser::ConsiderItem(OvUI::Widgets::Layout::TreeNod
 			std::make_pair(resourceFormatPath, &itemGroup)
 		);
 
-		contextMenu->RenamedEvent += [&ddSource, &clickableText, p_scriptFolder](std::string p_prev, std::string p_newPath)
+		contextMenu->RenamedEvent += [&ddSource, &clickableText](std::string p_prev, std::string p_newPath)
 		{
 			if (p_newPath != p_prev)
 			{
@@ -1316,16 +1316,9 @@ void OvEditor::Panels::AssetBrowser::ConsiderItem(OvUI::Widgets::Layout::TreeNod
 					std::string elementName = OvTools::Utils::PathParser::GetElementName(p_newPath);
 					ddSource.data.first = OvTools::Utils::PathParser::GetContainingFolder(ddSource.data.first) + elementName;
 
-					if (!p_scriptFolder)
-					{
-						EDITOR_EXEC(PropagateFileRename(p_prev, p_newPath));
-						if (EDITOR_CONTEXT(sceneManager).GetCurrentSceneSourcePath() == p_prev) // Modify current scene source path if the renamed file is the current scene
-							EDITOR_CONTEXT(sceneManager).StoreCurrentSceneSourcePath(p_newPath);
-					}
-					else
-					{
-						EDITOR_EXEC(PropagateScriptRename(p_prev, p_newPath));
-					}
+					EDITOR_EXEC(PropagateFileRename(p_prev, p_newPath));
+					if (EDITOR_CONTEXT(sceneManager).GetCurrentSceneSourcePath() == p_prev) // Modify current scene source path if the renamed file is the current scene
+						EDITOR_CONTEXT(sceneManager).StoreCurrentSceneSourcePath(p_newPath);
 
 					clickableText.content = elementName;
 				}

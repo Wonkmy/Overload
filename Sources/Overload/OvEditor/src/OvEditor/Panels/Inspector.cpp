@@ -163,32 +163,23 @@ OvEditor::Panels::Inspector::Inspector
 		// Add script button state updater
 		const auto updateAddScriptButton = [&addScriptButton, this](const std::string& p_script)
 		{
-			const std::string defaultScriptExtension = OVSERVICE(OvCore::Scripting::ScriptEngine).GetDefaultExtension();
-
-			const std::string realScriptPath =
-				EDITOR_CONTEXT(projectScriptsPath) +
-				p_script +
-				defaultScriptExtension;
+			const auto realPath = EDITOR_EXEC(GetRealPath(m_scriptSelectorWidget->content));
 
 			const auto targetActor = GetTargetActor();
-			const bool isScriptValid = std::filesystem::exists(realScriptPath) && targetActor && !targetActor->GetBehaviour(p_script);
+			const bool canAddScript = std::filesystem::exists(realPath) && targetActor && !targetActor->GetBehaviour(p_script);
 
-			addScriptButton.disabled = !isScriptValid;
-			addScriptButton.idleBackgroundColor = isScriptValid ? OvUI::Types::Color{ 0.7f, 0.5f, 0.f } : OvUI::Types::Color{ 0.1f, 0.1f, 0.1f };
+			addScriptButton.disabled = !canAddScript;
+			addScriptButton.idleBackgroundColor = canAddScript ? OvUI::Types::Color{ 0.7f, 0.5f, 0.f } : OvUI::Types::Color{ 0.1f, 0.1f, 0.1f };
 		};
 
 		m_scriptSelectorWidget->ContentChangedEvent += updateAddScriptButton;
 
-		addScriptButton.ClickedEvent += [updateAddScriptButton, this] {
-			const std::string defaultScriptExtension = OVSERVICE(OvCore::Scripting::ScriptEngine).GetDefaultExtension();
-
-			const std::string realScriptPath =
-				EDITOR_CONTEXT(projectScriptsPath) +
-				m_scriptSelectorWidget->content +
-				defaultScriptExtension;
+		addScriptButton.ClickedEvent += [updateAddScriptButton, this]
+		{
+			const auto realPath = EDITOR_EXEC(GetRealPath(m_scriptSelectorWidget->content));
 
 			// Ensure that the script is a valid one
-			if (std::filesystem::exists(realScriptPath))
+			if (std::filesystem::exists(realPath))
 			{
 				GetTargetActor()->AddBehaviour(m_scriptSelectorWidget->content);
 				updateAddScriptButton(m_scriptSelectorWidget->content);
@@ -197,7 +188,7 @@ OvEditor::Panels::Inspector::Inspector
 
 		ddTarget.DataReceivedEvent += [updateAddScriptButton, this](std::pair<std::string, Layout::Group*> p_data)
 		{
-			m_scriptSelectorWidget->content = EDITOR_EXEC(GetScriptPath(p_data.first));
+			m_scriptSelectorWidget->content = p_data.first;
 			updateAddScriptButton(m_scriptSelectorWidget->content);
 		};
 	}

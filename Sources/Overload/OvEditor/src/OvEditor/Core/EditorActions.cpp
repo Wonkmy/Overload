@@ -793,17 +793,12 @@ void OvEditor::Core::EditorActions::PropagateFolderDestruction(std::string p_fol
 
 void OvEditor::Core::EditorActions::PropagateScriptRename(std::string p_previousName, std::string p_newName)
 {
-	p_previousName = GetScriptPath(p_previousName);
-	p_newName = GetScriptPath(p_newName);
-
 	if (auto currentScene = m_context.sceneManager.GetCurrentScene())
 		for (auto actor : currentScene->GetActors())
 			if (actor->RemoveBehaviour(p_previousName))
 				actor->AddBehaviour(p_newName);
 
 	PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::SCENE);
-
-	EDITOR_PANEL(Panels::Inspector, "Inspector").Refresh();
 }
 
 void OvEditor::Core::EditorActions::PropagateFileRename(std::string p_previousName, std::string p_newName)
@@ -937,6 +932,9 @@ void OvEditor::Core::EditorActions::PropagateFileRename(std::string p_previousNa
 		break;
 	case OvTools::Utils::PathParser::EFileType::SOUND:
 		PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::SCENE);
+		break;
+	case OvTools::Utils::PathParser::EFileType::SCRIPT:
+		PropagateScriptRename(p_previousName, p_newName);
 		break;
 	}
 
