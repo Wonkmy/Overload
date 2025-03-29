@@ -281,7 +281,7 @@ void OvEditor::Panels::Inspector::CreateActorInspector(OvCore::ECS::Actor& p_tar
 	auto& behaviours = p_target.GetBehaviours();
 
 	for (auto&[name, behaviour] : behaviours)
-		DrawBehaviour(behaviour);
+		DrawBehaviour(*behaviour);
 }
 
 void OvEditor::Panels::Inspector::DrawComponent(OvCore::ECS::Components::AComponent& p_component)
@@ -305,7 +305,7 @@ void OvEditor::Panels::Inspector::DrawBehaviour(OvCore::ECS::Components::Behavio
 {
 	if (auto inspectorItem = dynamic_cast<OvCore::API::IInspectorItem*>(&p_behaviour); inspectorItem)
 	{
-		auto& header = m_actorInfo->CreateWidget<OvUI::Widgets::Layout::GroupCollapsable>(p_behaviour.name);
+		auto& header = m_actorInfo->CreateWidget<OvUI::Widgets::Layout::GroupCollapsable>(p_behaviour.GetName());
 		header.closable = true;
 		header.CloseEvent += [this, &header, &p_behaviour]
 		{
