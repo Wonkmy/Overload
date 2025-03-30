@@ -29,7 +29,7 @@ OvCore::ECS::Components::Behaviour::~Behaviour()
 
 std::string OvCore::ECS::Components::Behaviour::GetName()
 {
-	return "Behaviour";
+	return m_scriptName;
 }
 
 std::string OvCore::ECS::Components::Behaviour::GetScriptName() const

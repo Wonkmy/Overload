@@ -424,7 +424,7 @@ void OvCore::ECS::Actor::OnSerialize(tinyxml2::XMLDocument & p_doc, tinyxml2::XM
 		behavioursNode->InsertEndChild(behaviourNode);
 
 		/* Behaviour type */
-		OvCore::Helpers::Serializer::SerializeString(p_doc, behaviourNode, "type", behaviour.first);
+		OvCore::Helpers::Serializer::SerializeString(p_doc, behaviourNode, "type", behaviour.second->GetScriptPath());
 
 		/* Data node (Will be passed to the behaviour) */
 		tinyxml2::XMLElement* data = p_doc.NewElement("data");
