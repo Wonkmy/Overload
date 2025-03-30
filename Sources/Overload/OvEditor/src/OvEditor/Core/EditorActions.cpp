@@ -814,10 +814,18 @@ void OvEditor::Core::EditorActions::PropagateFolderDestruction(std::string p_fol
 
 void OvEditor::Core::EditorActions::PropagateScriptRename(std::string p_previousName, std::string p_newName)
 {
+	const auto behaviourName = std::filesystem::path{ p_previousName }.stem().string();
+
 	if (auto currentScene = m_context.sceneManager.GetCurrentScene())
+	{
 		for (auto actor : currentScene->GetActors())
-			if (actor->RemoveBehaviour(p_previousName))
-				actor->AddBehaviour(p_newName);
+		{
+			if (actor->RemoveBehaviour(behaviourName)) // Remove using the name
+			{
+				actor->AddBehaviour(p_newName); // Add using a path
+			}
+		}
+	}
 
 	PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::SCENE);
 }
