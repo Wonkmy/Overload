@@ -8,6 +8,7 @@
 #include "OvEditor/Core/EditorActions.h"
 
 #include <OvUI/Widgets/Buttons/Button.h>
+#include <OvUI/Widgets/Buttons/ButtonImage.h>
 #include <OvUI/Widgets/Selection/CheckBox.h>
 #include <OvUI/Widgets/Visual/Separator.h>
 #include <OvUI/Plugins/DDSource.h>
@@ -118,7 +119,7 @@ void ExpandTreeNode(OvUI::Widgets::Layout::TreeNode& p_toExpand)
 }
 
 std::vector<OvUI::Widgets::Layout::TreeNode*> nodesToCollapse;
-std::vector<OvUI::Widgets::Layout::TreeNode*> founds;
+std::vector<OvUI::Widgets::Layout::Group*> founds;
 
 void ExpandTreeNodeAndEnable(OvUI::Widgets::Layout::TreeNode& p_toExpand)
 {
@@ -157,19 +158,19 @@ OvEditor::Panels::Hierarchy::Hierarchy
 		{
 			if (!p_content.empty())
 			{
-				auto itemName = item->name;
+				auto itemName = item.node.name;
 				std::transform(itemName.begin(), itemName.end(), itemName.begin(), ::tolower);
 
 				if (itemName.find(content) != std::string::npos)
 				{
-					founds.push_back(item);
+					founds.push_back(&item.group);
 				}
 
-				item->enabled = false;
+				item.group.enabled = false;
 			}
 			else
 			{
-				item->enabled = true;
+				item.group.enabled = true;
 			}
 		}
 
@@ -197,9 +198,9 @@ OvEditor::Panels::Hierarchy::Hierarchy
 		}
 	};
 
-	auto& windowDDTarget = AddPlugin<OvUI::Plugins::DDTarget<std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::TreeNode*>>>("Actor");
+	auto& windowDDTarget = AddPlugin<OvUI::Plugins::DDTarget<std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::Group*>>>("Actor");
 	windowDDTarget.showYellowRect = false;
-	windowDDTarget.DataReceivedEvent += [this](std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::TreeNode*> p_element)
+	windowDDTarget.DataReceivedEvent += [this](std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::Group*> p_element)
 	{
 		if (p_element.second->HasParent())
 		{
@@ -234,14 +235,17 @@ void OvEditor::Panels::Hierarchy::Clear()
 void OvEditor::Panels::Hierarchy::UnselectActorsWidgets()
 {
 	for (auto& widget : m_widgetActorLink)
-		widget.second->selected = false;
+	{
+		widget.second.node.selected = false;
+	}
 }
 
 void OvEditor::Panels::Hierarchy::SelectActorByInstance(OvCore::ECS::Actor& p_actor)
 {
 	if (auto result = m_widgetActorLink.find(&p_actor); result != m_widgetActorLink.end())
-		if (result->second)
-			SelectActorByWidget(*result->second);
+	{
+		SelectActorByWidget(result->second.node);
+	}
 }
 
 void OvEditor::Panels::Hierarchy::SelectActorByWidget(OvUI::Widgets::Layout::TreeNode & p_widget)
@@ -259,31 +263,31 @@ void OvEditor::Panels::Hierarchy::SelectActorByWidget(OvUI::Widgets::Layout::Tre
 	}
 }
 
-void OvEditor::Panels::Hierarchy::AttachActorToParent(OvCore::ECS::Actor & p_actor)
+void OvEditor::Panels::Hierarchy::AttachActorToParent(OvCore::ECS::Actor& p_actor)
 {
 	auto actorWidget = m_widgetActorLink.find(&p_actor);
 
 	if (actorWidget != m_widgetActorLink.end())
 	{
-		auto widget = actorWidget->second;
+		auto& widget = actorWidget->second.group;
 
-		if (widget->HasParent())
+		if (widget.HasParent())
 		{
-			widget->GetParent()->UnconsiderWidget(*widget);
+			widget.GetParent()->UnconsiderWidget(widget);
 		}
 
 		if (p_actor.HasParent())
 		{
 			if (auto parentWidget = m_widgetActorLink.find(p_actor.GetParent()); parentWidget != m_widgetActorLink.end())
 			{
-				parentWidget->second->leaf = false;
-				parentWidget->second->ConsiderWidget(*widget);
+				parentWidget->second.node.leaf = false;
+				parentWidget->second.node.ConsiderWidget(widget);
 			}
 		}
 	}
 }
 
-void OvEditor::Panels::Hierarchy::DetachFromParent(OvCore::ECS::Actor & p_actor)
+void OvEditor::Panels::Hierarchy::DetachFromParent(OvCore::ECS::Actor& p_actor)
 {
 	if (auto actorWidget = m_widgetActorLink.find(&p_actor); actorWidget != m_widgetActorLink.end())
 	{
@@ -291,18 +295,18 @@ void OvEditor::Panels::Hierarchy::DetachFromParent(OvCore::ECS::Actor & p_actor)
 		{
 			if (auto parentWidget = m_widgetActorLink.find(p_actor.GetParent()); parentWidget != m_widgetActorLink.end())
 			{
-				parentWidget->second->leaf = true;
+				parentWidget->second.node.leaf = true;
 			}
 		}
 
-		auto widget = actorWidget->second;
+		auto& widget = actorWidget->second.group;
 
-		if (widget->HasParent())
+		if (widget.HasParent())
 		{
-			widget->GetParent()->UnconsiderWidget(*widget);
+			widget.GetParent()->UnconsiderWidget(widget);
 		}
 
-		ConsiderWidget(*widget);
+		ConsiderWidget(widget);
 	}
 }
 
@@ -310,16 +314,14 @@ void OvEditor::Panels::Hierarchy::DeleteActorByInstance(OvCore::ECS::Actor& p_ac
 {
 	if (auto result = m_widgetActorLink.find(&p_actor); result != m_widgetActorLink.end())
 	{
-		if (result->second)
-		{
-			result->second->Destroy();
-		}
+		result->second.group.Destroy();
+		result->second.node.Destroy();
 
 		if (p_actor.HasParent() && p_actor.GetParent()->GetChildren().size() == 1)
 		{
 			if (auto parentWidget = m_widgetActorLink.find(p_actor.GetParent()); parentWidget != m_widgetActorLink.end())
 			{
-				parentWidget->second->leaf = true;
+				parentWidget->second.node.leaf = true;
 			}
 		}
 
@@ -329,11 +331,23 @@ void OvEditor::Panels::Hierarchy::DeleteActorByInstance(OvCore::ECS::Actor& p_ac
 
 void OvEditor::Panels::Hierarchy::AddActorByInstance(OvCore::ECS::Actor & p_actor)
 {
-	auto& textSelectable = CreateWidget<OvUI::Widgets::Layout::TreeNode>(p_actor.GetName(), true);
+	auto& itemGroup = CreateWidget<OvUI::Widgets::Layout::Group>();
+
+	auto& button = itemGroup.CreateWidget<OvUI::Widgets::Buttons::ButtonImage>(
+		EDITOR_CONTEXT(editorResources)->GetTexture("Icon_Material")->id,
+		OvMaths::FVector2 { 8, 8 }
+	);
+	button.lineBreak = false;
+	button.ClickedEvent += [this, &p_actor]
+	{
+		p_actor.SetActive(!p_actor.IsActive());
+	};
+
+	auto& textSelectable = itemGroup.CreateWidget<OvUI::Widgets::Layout::TreeNode>(p_actor.GetName(), true);
 	textSelectable.leaf = true;
 	textSelectable.AddPlugin<ActorContextualMenu>(&p_actor, &textSelectable);
-	textSelectable.AddPlugin<OvUI::Plugins::DDSource<std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::TreeNode*>>>("Actor", "Attach to...", std::make_pair(&p_actor, &textSelectable));
-	textSelectable.AddPlugin<OvUI::Plugins::DDTarget<std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::TreeNode*>>>("Actor").DataReceivedEvent += [&p_actor, &textSelectable](std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::TreeNode*> p_element)
+	textSelectable.AddPlugin<OvUI::Plugins::DDSource<std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::Group*>>>("Actor", "Attach to...", std::make_pair(&p_actor, &itemGroup));
+	textSelectable.AddPlugin<OvUI::Plugins::DDTarget<std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::Group*>>>("Actor").DataReceivedEvent += [&p_actor, &textSelectable](std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::Group*> p_element)
 	{
 		if (p_actor.IsDescendantOf(p_element.first))
 		{
@@ -348,7 +362,10 @@ void OvEditor::Panels::Hierarchy::AddActorByInstance(OvCore::ECS::Actor & p_acto
 	OvCore::ECS::Actor* targetPtr = &p_actor;
 	dispatcher.RegisterGatherer([targetPtr] { return targetPtr->GetName(); });
 
-	m_widgetActorLink[targetPtr] = &textSelectable;
+	m_widgetActorLink.try_emplace(targetPtr, ActorWidgets{
+		itemGroup,
+		textSelectable
+	});
 
 	textSelectable.ClickedEvent += EDITOR_BIND(SelectActor, std::ref(p_actor));
 	textSelectable.DoubleClickedEvent += EDITOR_BIND(MoveToTarget, std::ref(p_actor));
