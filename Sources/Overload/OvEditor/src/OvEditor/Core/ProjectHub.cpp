@@ -9,24 +9,36 @@
 #include <filesystem>
 #include <fstream>
 
-#include "OvEditor/Core/ProjectHub.h"
-
-#include <OvUI/Widgets/Texts/Text.h>
-#include <OvUI/Widgets/Visual/Separator.h>
-#include <OvUI/Widgets/Layout/Columns.h>
-#include <OvUI/Widgets/Layout/Spacing.h>
-#include <OvUI/Widgets/Layout/Group.h>
-#include <OvUI/Widgets/Buttons/Button.h>
-#include <OvUI/Widgets/InputFields/InputText.h>
+#include <OvEditor/Core/ProjectHub.h>
 
 #include <OvTools/Utils/PathParser.h>
 #include <OvTools/Utils/SystemCalls.h>
 
-#include <OvWindowing/Dialogs/SaveFileDialog.h>
-#include <OvWindowing/Dialogs/OpenFileDialog.h>
+#include <OvUI/Widgets/Buttons/Button.h>
+#include <OvUI/Widgets/Layout/Columns.h>
+#include <OvUI/Widgets/Layout/Group.h>
+#include <OvUI/Widgets/Layout/Spacing.h>
+#include <OvUI/Widgets/InputFields/InputText.h>
+#include <OvUI/Widgets/Selection/ComboBox.h>
+#include <OvUI/Widgets/Texts/Text.h>
+#include <OvUI/Widgets/Visual/Separator.h>
+
 #include <OvWindowing/Dialogs/MessageBox.h>
+#include <OvWindowing/Dialogs/OpenFileDialog.h>
+#include <OvWindowing/Dialogs/SaveFileDialog.h>
 
 #define PROJECTS_FILE std::string(OvTools::Utils::SystemCalls::GetPathToAppdata() + "\\OverloadTech\\OvEditor\\projects.ini")
+
+struct TemplateProject
+{
+	const std::string_view name;
+	const std::string_view url;
+};
+
+constexpr auto kTemplateProjects = std::to_array<TemplateProject>({
+	{"Showroom", "https://github.com/Overload-Technologies/Overload-Showroom"},
+	{"Cargo", "https://github.com/Overload-Technologies/Cargo-Demo"}
+});
 
 class ProjectHubPanel : public OvUI::Panels::PanelWindow
 {
@@ -43,46 +55,41 @@ public:
 
 		std::filesystem::create_directories(OvTools::Utils::SystemCalls::GetPathToAppdata() + "\\OverloadTech\\OvEditor\\");
 
-		SetSize({ 1000, 580 });
+		SetSize({ 1300, 580 });
 		SetPosition({ 0.f, 0.f });
 
-		auto& openProjectButton = CreateWidget<OvUI::Widgets::Buttons::Button>("Open Project");
-		auto& newProjectButton = CreateWidget<OvUI::Widgets::Buttons::Button>("New Project");
-		auto& pathField = CreateWidget<OvUI::Widgets::InputFields::InputText>("");
-		m_goButton = &CreateWidget<OvUI::Widgets::Buttons::Button>("GO");
-
-		pathField.ContentChangedEvent += [this, &pathField](std::string p_content)
-		{
-			pathField.content = OvTools::Utils::PathParser::MakeWindowsStyle(p_content);
-
-			if (pathField.content != "" && pathField.content.back() != '\\')
-				pathField.content += '\\';
-
-			UpdateGoButton(pathField.content);
+		auto& templateOptions = CreateWidget<OvUI::Widgets::Selection::ComboBox>(-2);
+		templateOptions.choices = {
+			{-3, "Create Empty Project"},
+			{-2, "Load From Disk"},
+			{-1, "Create Project From GitHub URL"}
 		};
-
-		UpdateGoButton("");
-
-		openProjectButton.idleBackgroundColor = { 0.7f, 0.5f, 0.f };
-		newProjectButton.idleBackgroundColor = { 0.f, 0.5f, 0.0f };
-
-		openProjectButton.ClickedEvent += [this]
+		for (uint8_t i = 0; i < kTemplateProjects.size(); ++i)
 		{
-			OvWindowing::Dialogs::OpenFileDialog dialog("Open project");
-			dialog.AddFileType("Overload Project", "*.ovproject");
-			dialog.Show();
+			templateOptions.choices.emplace(i, std::format("Create From Template: {}", kTemplateProjects[i].name));
+		}
+		
+		templateOptions.lineBreak = false;
 
-			std::string ovProjectPath = dialog.GetSelectedFilePath();
-			std::string rootFolderPath = OvTools::Utils::PathParser::GetContainingFolder(ovProjectPath);
+		m_goButton = &CreateWidget<OvUI::Widgets::Buttons::Button>("GO");
+		m_goButton->idleBackgroundColor = OvUI::Types::Color{ 0.f, 0.5f, 0.0f };
+		auto& templateField = CreateWidget<OvUI::Widgets::InputFields::InputText>("", "Template URL");
+		templateField.enabled = false;
 
-			if (dialog.HasSucceeded())
+		// UpdateGoButton("");
+
+		templateOptions.ValueChangedEvent += [this, &templateField](int p_index)
+		{
+			templateField.content = "";
+			templateField.enabled = p_index == -1;
+
+			if (p_index >= 0 && p_index < kTemplateProjects.size())
 			{
-				RegisterProject(rootFolderPath);
-				OpenProject(rootFolderPath);
+				templateField.content = kTemplateProjects[p_index].url;
 			}
 		};
 
-		newProjectButton.ClickedEvent += [this, &pathField]
+		auto selectNewProjectLocation = []
 		{
 			OvWindowing::Dialogs::SaveFileDialog dialog("New project location");
 			dialog.DefineExtension("Overload Project", "..");
@@ -90,29 +97,77 @@ public:
 			if (dialog.HasSucceeded())
 			{
 				std::string result = dialog.GetSelectedFilePath();
-				pathField.content = std::string(result.data(), result.data() + result.size() - std::string("..").size()); // remove auto extension
-				pathField.content += "\\";
-				UpdateGoButton(pathField.content);
+				std::string path{ result.data(), result.data() + result.size() - std::string("..").size() }; // remove auto extension
+				path += "\\";
+				return path;
 			}
+			return std::string();
 		};
 
-		m_goButton->ClickedEvent += [this, &pathField]
+		auto selectOpenProjectLocation = []
 		{
-			CreateProject(pathField.content);
-			RegisterProject(pathField.content);
-			OpenProject(pathField.content);
+			OvWindowing::Dialogs::OpenFileDialog dialog("Open project");
+			dialog.AddFileType("Overload Project", "*.ovproject");
+			dialog.Show();
+			if (dialog.HasSucceeded())
+			{
+				std::string ovProjectPath = dialog.GetSelectedFilePath();
+				std::string rootFolderPath = OvTools::Utils::PathParser::GetContainingFolder(ovProjectPath);
+				return rootFolderPath;
+			}
+			return std::string();
 		};
 
-		openProjectButton.lineBreak = false;
-		newProjectButton.lineBreak = false;
-		pathField.lineBreak = false;
+		m_goButton->ClickedEvent += [&]
+		{
+			if (templateOptions.currentChoice == -3)
+			{
+				const auto path = selectNewProjectLocation();
+				if (!path.empty())
+				{
+					CreateProject(path);
+					RegisterProject(path);
+					OpenProject(path);
+				}
+			}
+			else if (templateOptions.currentChoice == -2)
+			{
+				const auto path = selectOpenProjectLocation();
+				if (!path.empty())
+				{
+					RegisterProject(path);
+					OpenProject(path);
+				}
+			}
+			else if (templateOptions.currentChoice == -1)
+			{
+				const auto path = selectNewProjectLocation();
+				if (!path.empty())
+				{
+					CreateProjectFromTemplate(path, templateField.content);
+					RegisterProject(path);
+					OpenProject(path);
+				}
+			}
+			else
+			{
+				const auto path = selectNewProjectLocation();
+				if (!path.empty())
+				{
+					CreateProjectFromTemplate(path, std::string{ kTemplateProjects[templateOptions.currentChoice].url });
+					RegisterProject(path);
+					OpenProject(path);
+				}
+			}
+			
+		};
 
-		for (uint8_t i = 0; i < 4; ++i)
+		for (uint8_t i = 0; i < 2; ++i)
 			CreateWidget<OvUI::Widgets::Layout::Spacing>();
 
 		CreateWidget<OvUI::Widgets::Visual::Separator>();
 
-		for (uint8_t i = 0; i < 4; ++i)
+		for (uint8_t i = 0; i < 2; ++i)
 			CreateWidget<OvUI::Widgets::Layout::Spacing>();
 
 		auto& columns = CreateWidget<OvUI::Widgets::Layout::Columns<2>>();
@@ -184,6 +239,14 @@ public:
 			std::filesystem::create_directory(p_path + "Assets\\");
 			std::filesystem::create_directory(p_path + "Scripts\\");
 			std::ofstream projectFile(p_path + '\\' + OvTools::Utils::PathParser::GetElementName(std::string(p_path.data(), p_path.data() + p_path.size() - 1)) + ".ovproject");
+		}
+	}
+
+	void CreateProjectFromTemplate(const std::string& p_path, const std::string& p_templateUrl)
+	{
+		if (!std::filesystem::exists(p_path))
+		{
+			std::system(std::format("git clone {} {}", p_templateUrl, p_path).c_str());
 		}
 	}
 
