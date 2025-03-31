@@ -19,7 +19,7 @@ namespace OvEditor::Utils
 	};
 
 	constexpr auto ExternalTools = std::to_array<ExternalTool>({
-		ExternalTool{ "Visual Studio Code", "code \"{}\"" },
+		ExternalTool{ "Visual Studio Code", "code {}" },
 		ExternalTool{ "Sublime Text", "subl {}" },
 		ExternalTool{ "Atom", "atom {}" },
 	});

@@ -190,9 +190,9 @@ public:
 			OvEditor::Settings::EditorSettings::FolderExternalToolName.Get()
 		);
 	}
-	virtual void Execute() override
+	virtual void Execute(OvUI::Plugins::EPluginExecutionContext p_context) override
 	{
-		BrowserItemContextualMenu::Execute();
+		BrowserItemContextualMenu::Execute(p_context);
 
 		// Keep the "Open In External Tool" menu item label up to date
 		m_openInExternalTool->name = GetOpenInExternalToolName();
@@ -214,14 +214,11 @@ public:
 				std::make_format_args(filePath)
 			);
 
-			const auto result = std::system(command.c_str());
-
-			if (result != 0)
+			if (!OvTools::Utils::SystemCalls::ExecuteCommand(command))
 			{
 				OVLOG_ERROR(std::format(
-					"Failed to open {} with error code: {}",
-					OvEditor::Settings::EditorSettings::FolderExternalToolName.Get(),
-					std::to_string(result)
+					"Failed to open {}",
+					OvEditor::Settings::EditorSettings::FolderExternalToolName.Get()
 				));
 			}
 		};
