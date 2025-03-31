@@ -43,7 +43,7 @@ bool OvTools::Utils::SystemCalls::ExecuteCommand(const std::string_view p_comman
 
 	std::string command = std::format("cmd.exe /c {}", p_command);
 
-	bool success = (CreateProcess(
+	bool success = CreateProcess(
 		nullptr,							// Application name (nullptr uses command line)
 		command.data(),						// Command to execute
 		nullptr,							// Process security attributes
@@ -54,7 +54,7 @@ bool OvTools::Utils::SystemCalls::ExecuteCommand(const std::string_view p_comman
 		nullptr,							// Current directory
 		&startupInfo,						// STARTUPINFO structure
 		&processInfo						// PROCESS_INFORMATION structure
-	));
+	);
 
 	// Wait until child process exits.
 	WaitForSingleObject(processInfo.hProcess, INFINITE);
