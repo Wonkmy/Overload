@@ -9,8 +9,8 @@
 #include <iostream>
 #include <memory>
 
-#include "OvTools/Utils/PathParser.h"
-#include "OvTools/Utils/SystemCalls.h"
+#include <OvTools/Utils/PathParser.h>
+#include <OvTools/Utils/SystemCalls.h>
 
 #include <ShlObj.h>
 #include <Windows.h>
