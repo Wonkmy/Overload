@@ -231,16 +231,16 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 		{
 			if (entry.is_regular_file() && entry.path().extension() == ".ini")
 			{
-				std::shared_ptr<std::string> layoutFileName = std::make_shared<std::string>(entry.path().filename().string());
+				std::string layoutFileName = entry.path().filename().string();
 
-				auto& layoutMenuItem = loadMenuList.CreateWidget<MenuItem>(*layoutFileName);
-				layoutMenuItem.name = OvTools::Utils::PathParser::GetFileWithoutExtension(*layoutFileName);
+				auto& layoutMenuItem = loadMenuList.CreateWidget<MenuItem>(layoutFileName);
+				layoutMenuItem.name = OvTools::Utils::PathParser::GetFileWithoutExtension(layoutFileName);
 
 				layoutMenuItem.ClickedEvent += [this, layoutsPath, layoutFileName]
 				{
 					auto& UIManager = OvCore::Global::ServiceLocator::Get<OvUI::Core::UIManager>();
 					std::string layoutsPath = UIManager.GetLayoutsPath();
-					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::SetLayout, &UIManager, layoutsPath + *layoutFileName), 1));
+					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::SetLayout, &UIManager, layoutsPath + layoutFileName), 1));
 				};
 				
 				auto& contextualMenu = layoutMenuItem.AddPlugin<OvUI::Plugins::ContextualMenu>();
@@ -251,14 +251,14 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 					//EDITOR_EXEC(ResetToDefaultLayout);
 					auto& UIManager = OvCore::Global::ServiceLocator::Get<OvUI::Core::UIManager>();
 					std::string layoutsPath = UIManager.GetLayoutsPath();
-					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::DeleteLayout, &UIManager, layoutsPath + *layoutFileName), 1));
+					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::DeleteLayout, &UIManager, layoutsPath + layoutFileName), 1));
 					layoutMenuItem.enabled = false;
 
 				};
 				auto& renameToMenuList = contextualMenu.CreateWidget<MenuList>("Rename to...");
 
 				auto& renameInputText = renameToMenuList.CreateWidget<InputFields::InputText>("");
-				renameInputText.content = OvTools::Utils::PathParser::GetFileWithoutExtension(*layoutFileName);
+				renameInputText.content = OvTools::Utils::PathParser::GetFileWithoutExtension(layoutFileName);
 				renameInputText.selectAllOnClick = true;
 
 				renameInputText.EnterPressedEvent += [this, layoutFileName, &contextualMenu, &layoutMenuItem](std::string p_newName)
@@ -272,11 +272,10 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 					auto& UIManager = OvCore::Global::ServiceLocator::Get<OvUI::Core::UIManager>();
 					std::string layoutsPath = UIManager.GetLayoutsPath();
 
-					std::string oldFileName = layoutsPath + *layoutFileName;
+					std::string oldFileName = layoutsPath + layoutFileName;
 					std::string newFileName = layoutsPath + p_newName + ".ini";
 					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::RenameLayout, &UIManager, oldFileName, newFileName), 1));
 
-					*layoutFileName = p_newName + ".ini";
 					contextualMenu.Close();
 				};
 			}
