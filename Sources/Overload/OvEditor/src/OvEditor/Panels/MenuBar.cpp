@@ -233,21 +233,23 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 				auto& layoutMenuItem = loadMenuList.CreateWidget<MenuItem>(entry.path().stem().string());
 				layoutMenuItem.name = entry.path().stem().string();
 
-				layoutMenuItem.ClickedEvent += [entry]
+				std::shared_ptr<std::filesystem::path> currentPath = std::make_shared<std::filesystem::path>(entry.path());
+
+				layoutMenuItem.ClickedEvent += [currentPath]
 				{
 					auto& uiManager = *EDITOR_CONTEXT(uiManager);
-					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::SetLayout, &uiManager, entry.path()), 1));
+					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::SetLayout, &uiManager, *currentPath), 1));
 
-					Settings::EditorSettings::LatestLayout = entry.path().string();
+					Settings::EditorSettings::LatestLayout = currentPath->string();
 				};
 				
 				auto& contextualMenu = layoutMenuItem.AddPlugin<OvUI::Plugins::ContextualMenu>();
 				auto& deleteMenuItem = contextualMenu.CreateWidget<MenuItem>("Delete");
 
-				deleteMenuItem.ClickedEvent += [entry, &layoutMenuItem]
+				deleteMenuItem.ClickedEvent += [currentPath, &layoutMenuItem]
 				{
 					auto& uiManager = *EDITOR_CONTEXT(uiManager);
-					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::DeleteLayout, &uiManager, entry.path()), 1));
+					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::DeleteLayout, &uiManager, *currentPath), 1));
 					layoutMenuItem.enabled = false;
 
 				};
@@ -257,7 +259,7 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 				renameInputText.content = entry.path().stem().string();
 				renameInputText.selectAllOnClick = true;
 
-				renameInputText.EnterPressedEvent += [entry, &layoutMenuItem, &layoutsPath, &contextualMenu](std::string p_newName)
+				renameInputText.EnterPressedEvent += [currentPath, &layoutMenuItem, &layoutsPath, &contextualMenu](std::string p_newName)
 				{
 					if (p_newName.empty())
 						return;
@@ -265,8 +267,9 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 					layoutMenuItem.name = p_newName;
 					
 					auto& uiManager = *EDITOR_CONTEXT(uiManager);
-					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::RenameLayout, &uiManager, entry.path(), layoutsPath / (p_newName + ".ini")), 1));
-					
+					std::filesystem::path newPath = layoutsPath / (p_newName + ".ini");
+					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::RenameLayout, &uiManager, *currentPath, newPath), 1));
+					*currentPath = newPath;
 					contextualMenu.Close();
 				};
 			}
