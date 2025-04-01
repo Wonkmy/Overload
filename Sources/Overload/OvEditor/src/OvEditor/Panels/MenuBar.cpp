@@ -4,6 +4,8 @@
 * @licence: MIT
 */
 
+#include <filesystem>
+
 #include <OvTools/Utils/SystemCalls.h>
 
 #include <OvCore/ECS/Components/CCamera.h>
@@ -30,6 +32,7 @@
 #include "OvEditor/Core/EditorActions.h"
 #include "OvEditor/Settings/EditorSettings.h"
 #include "OvEditor/Utils/ActorCreationMenu.h"
+#include "OvUI/Plugins/ContextualMenu.h"
 
 using namespace OvUI::Panels;
 using namespace OvUI::Widgets;
@@ -197,8 +200,90 @@ void OvEditor::Panels::MenuBar::CreateSettingsMenu()
 
 void OvEditor::Panels::MenuBar::CreateLayoutMenu() 
 {
-	auto& layoutMenu = CreateWidget<MenuList>("Layout");
-	layoutMenu.CreateWidget<MenuItem>("Reset").ClickedEvent += EDITOR_BIND(ResetLayout);
+	auto& layoutMenuList = CreateWidget<MenuList>("Layout");
+
+	auto& saveMenuItem = layoutMenuList.CreateWidget<MenuItem>("Save");
+	saveMenuItem.ClickedEvent += EDITOR_BIND(SaveCurrentLayout);
+
+	auto& saveNewMenuList = layoutMenuList.CreateWidget<MenuList>("Save New");
+	auto& layoutInputText = saveNewMenuList.CreateWidget<InputFields::InputText>("Layout Name");
+	layoutInputText.selectAllOnClick = true;
+	layoutInputText.EnterPressedEvent += [this](std::string p_input)
+	{
+		if (p_input.empty())
+			return;
+
+		auto& UIManager = OvCore::Global::ServiceLocator::Get<OvUI::Core::UIManager>();
+		std::string layoutsPath = UIManager.GetLayoutsPath();
+		EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::SaveLayout, &UIManager, layoutsPath + p_input + ".ini"), 1));
+	};
+
+	auto& loadMenuList = layoutMenuList.CreateWidget<MenuList>("Load");
+
+	loadMenuList.ClickedEvent += [&]
+	{
+		loadMenuList.RemoveAllWidgets();
+
+		auto& UIManager = OvCore::Global::ServiceLocator::Get<OvUI::Core::UIManager>();
+		std::string layoutsPath = UIManager.GetLayoutsPath();
+
+		for (const auto& entry : std::filesystem::directory_iterator(layoutsPath))
+		{
+			if (entry.is_regular_file() && entry.path().extension() == ".ini")
+			{
+				std::shared_ptr<std::string> layoutFileName = std::make_shared<std::string>(entry.path().filename().string());
+
+				auto& layoutMenuItem = loadMenuList.CreateWidget<MenuItem>(*layoutFileName);
+				layoutMenuItem.name = OvTools::Utils::PathParser::GetFileWithoutExtension(*layoutFileName);
+
+				layoutMenuItem.ClickedEvent += [this, layoutsPath, layoutFileName]
+				{
+					auto& UIManager = OvCore::Global::ServiceLocator::Get<OvUI::Core::UIManager>();
+					std::string layoutsPath = UIManager.GetLayoutsPath();
+					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::SetLayout, &UIManager, layoutsPath + *layoutFileName), 1));
+				};
+				
+				auto& contextualMenu = layoutMenuItem.AddPlugin<OvUI::Plugins::ContextualMenu>();
+				auto& deleteMenuItem = contextualMenu.CreateWidget<MenuItem>("Delete");
+
+				deleteMenuItem.ClickedEvent += [this, layoutFileName, &layoutMenuItem]
+				{
+					//EDITOR_EXEC(ResetToDefaultLayout);
+					auto& UIManager = OvCore::Global::ServiceLocator::Get<OvUI::Core::UIManager>();
+					std::string layoutsPath = UIManager.GetLayoutsPath();
+					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::DeleteLayout, &UIManager, layoutsPath + *layoutFileName), 1));
+					layoutMenuItem.enabled = false;
+
+				};
+				auto& renameToMenuList = contextualMenu.CreateWidget<MenuList>("Rename to...");
+
+				auto& renameInputText = renameToMenuList.CreateWidget<InputFields::InputText>("");
+				renameInputText.content = OvTools::Utils::PathParser::GetFileWithoutExtension(*layoutFileName);
+				renameInputText.selectAllOnClick = true;
+
+				renameInputText.EnterPressedEvent += [this, layoutFileName, &contextualMenu, &layoutMenuItem](std::string p_newName)
+				{
+					if (p_newName.empty())
+						return;
+
+					layoutMenuItem.name = p_newName;
+					//EDITOR_EXEC(ResetToDefaultLayout);
+
+					auto& UIManager = OvCore::Global::ServiceLocator::Get<OvUI::Core::UIManager>();
+					std::string layoutsPath = UIManager.GetLayoutsPath();
+
+					std::string oldFileName = layoutsPath + *layoutFileName;
+					std::string newFileName = layoutsPath + p_newName + ".ini";
+					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::RenameLayout, &UIManager, oldFileName, newFileName), 1));
+
+					*layoutFileName = p_newName + ".ini";
+					contextualMenu.Close();
+				};
+			}
+		}
+	};
+
+	layoutMenuList.CreateWidget<MenuItem>("Reset").ClickedEvent += EDITOR_BIND(ResetLayout);
 }
 
 void OvEditor::Panels::MenuBar::CreateHelpMenu()

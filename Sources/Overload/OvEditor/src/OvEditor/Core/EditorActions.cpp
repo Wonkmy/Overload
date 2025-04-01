@@ -377,6 +377,21 @@ void OvEditor::Core::EditorActions::ResetLayout()
     DelayAction([this]() {m_context.uiManager->ResetLayout("Config\\layout.ini"); });
 }
 
+void OvEditor::Core::EditorActions::SaveLayout(const std::string& p_fileName)
+{
+	DelayAction([&]() {m_context.uiManager->SaveLayout(std::ref(p_fileName)); });
+}
+
+void OvEditor::Core::EditorActions::SaveCurrentLayout()
+{
+	DelayAction([&]() {m_context.uiManager->SaveCurrentLayout(); });
+}
+
+void OvEditor::Core::EditorActions::SetLayout(const std::string& p_fileName)
+{
+	DelayAction([&]() {m_context.uiManager->SetLayout(std::ref(p_fileName)); });
+}
+
 void OvEditor::Core::EditorActions::SetSceneViewCameraSpeed(int p_speed)
 {
 	EDITOR_PANEL(Panels::SceneView, "Scene View").GetCameraController().SetSpeed((float)p_speed);

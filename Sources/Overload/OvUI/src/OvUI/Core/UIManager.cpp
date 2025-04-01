@@ -6,7 +6,13 @@
 
 #include "OvUI/Core/UIManager.h"
 
-OvUI::Core::UIManager::UIManager(GLFWwindow* p_glfwWindow, Styling::EStyle p_style, std::string_view p_glslVersion)
+#include <filesystem>
+
+#include "OvTools/Utils/SystemCalls.h"
+
+OvUI::Core::UIManager::UIManager(GLFWwindow* p_glfwWindow, Styling::EStyle p_style, std::string_view p_glslVersion) :
+m_defaultLayout("Config\\layout.ini"),
+m_layoutsPath(OvTools::Utils::SystemCalls::GetPathToAppdata() + "\\OverloadTech\\OvEditor\\")
 {
 	ImGui::CreateContext();
 
@@ -259,6 +265,50 @@ void OvUI::Core::UIManager::ResetLayout(const std::string& p_config) const
     ImGui::LoadIniSettingsFromDisk(p_config.c_str());
 }
 
+void OvUI::Core::UIManager::LoadLayout(const std::string& p_fileName)
+{
+	ImGui::LoadIniSettingsFromDisk(p_fileName.c_str());
+}
+
+void OvUI::Core::UIManager::SaveLayout(const std::string& p_fileName)
+{
+	SetEditorLayoutSaveFilename(p_fileName);
+
+	ImGui::SaveIniSettingsToDisk(m_layoutSaveFilename.c_str());
+}
+
+void OvUI::Core::UIManager::SaveCurrentLayout()
+{
+	if (!std::filesystem::exists(m_layoutSaveFilename))
+	{
+		m_layoutSaveFilename = m_layoutsPath + "layout.ini";
+		SetEditorLayoutSaveFilename(m_layoutSaveFilename);
+	}
+	ImGui::SaveIniSettingsToDisk(m_layoutSaveFilename.c_str());
+}
+
+void OvUI::Core::UIManager::SetLayout(const std::string& p_fileName)
+{
+	SetEditorLayoutSaveFilename(p_fileName);
+
+	ImGui::LoadIniSettingsFromDisk(p_fileName.c_str());
+}
+
+void OvUI::Core::UIManager::DeleteLayout(const std::string& p_fileName)
+{
+	std::filesystem::remove(p_fileName);
+}
+
+void OvUI::Core::UIManager::RenameLayout(const std::string& p_fileName, const std::string& p_newFileName)
+{
+	std::filesystem::rename(p_fileName, p_newFileName);
+
+	if (m_layoutSaveFilename == p_fileName)
+	{
+		SetEditorLayoutSaveFilename(p_newFileName);
+	}
+}
+
 bool OvUI::Core::UIManager::IsDockingEnabled() const
 {
 	return m_dockingState;
@@ -283,6 +333,11 @@ void OvUI::Core::UIManager::Render()
 		m_currentCanvas->Draw();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	}
+}
+
+std::string OvUI::Core::UIManager::GetLayoutsPath()
+{
+	return m_layoutsPath;
 }
 
 void OvUI::Core::UIManager::PushCurrentFont()

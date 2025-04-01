@@ -96,11 +96,47 @@ namespace OvUI::Core
 		*/
 		void EnableDocking(bool p_value);
 
-        /**
-        * Reset the UI layout to the given configuration file
-        * @param p_config
-        */
-        void ResetLayout(const std::string & p_config) const;
+		/**
+		* Reset the UI layout to the given configuration file
+		* @param p_config
+		*/
+		void ResetLayout(const std::string& p_config) const;
+
+		/**
+		* Load the UI layout from the given configuration file
+		* @param p_fileName
+		*/
+		void LoadLayout(const std::string& p_fileName);
+
+		/**
+		* Save the UI layout to the given configuration file
+		* @param p_fileName
+		*/
+		void SaveLayout(const std::string& p_fileName);
+
+		/**
+		 * Save the current UI layout to the last used configuration file
+		 */
+		void SaveCurrentLayout();
+
+		/**
+		 * Set and load the UI layout from the given configuration file
+		 * @param p_fileName
+		 */
+		void SetLayout(const std::string& p_fileName);
+
+		/**
+		 * Delete the UI layout configuration file
+		 * @param p_fileName
+		 */
+		void DeleteLayout(const std::string& p_fileName);
+
+		/**
+		 * Rename a UI layout configuration file
+		 * @param p_fileName
+		 * @param p_newFileName
+		 */
+		void RenameLayout(const std::string& p_fileName, const std::string& p_newFileName);
 
 		/**
 		* Return true if the docking system is enabled
@@ -124,6 +160,8 @@ namespace OvUI::Core
 		*/
 		void Render();
 
+		std::string GetLayoutsPath();
+
 	private:
 		void PushCurrentFont();
 		void PopCurrentFont();
@@ -133,5 +171,7 @@ namespace OvUI::Core
 		Modules::Canvas* m_currentCanvas = nullptr;
 		std::unordered_map<std::string, ImFont*> m_fonts;
 		std::string m_layoutSaveFilename = "imgui.ini";
+		const std::string m_defaultLayout;
+		const std::string m_layoutsPath;
 	};
 }
