@@ -12,7 +12,7 @@
 
 OvUI::Core::UIManager::UIManager(GLFWwindow* p_glfwWindow, Styling::EStyle p_style, std::string_view p_glslVersion) :
 m_defaultLayout("Config\\layout.ini"),
-m_layoutsPath(OvTools::Utils::SystemCalls::GetPathToAppdata() + "\\OverloadTech\\OvEditor\\Layouts\\")
+m_layoutsPath(std::filesystem::path{ OvTools::Utils::SystemCalls::GetPathToAppdata() } / "OverloadTech" / "OvEditor" / "Layouts")
 {
 	ImGui::CreateContext();
 
