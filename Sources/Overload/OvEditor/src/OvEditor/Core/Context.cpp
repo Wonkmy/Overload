@@ -154,7 +154,6 @@ OvEditor::Core::Context::Context(const std::string& p_projectPath, const std::st
 	ServiceLocator::Provide<OvAudio::Core::AudioPlayer>(*audioPlayer);
 	ServiceLocator::Provide<OvCore::Scripting::ScriptEngine>(*scriptEngine);
 	ServiceLocator::Provide<OvEditor::Utils::TextureRegistry>(*textureRegistry);
-	ServiceLocator::Provide<OvUI::Core::UIManager>(*uiManager);
 
 	ApplyProjectSettings();
 }
