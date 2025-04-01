@@ -92,5 +92,6 @@ namespace OvEditor::Settings
 		inline static Property<float> TranslationSnapUnit = { 1.0f };
 		inline static Property<float> RotationSnapUnit = { 15.0f };
 		inline static Property<float> ScalingSnapUnit = { 1.0f };
+		inline static Property<std::string> LatestLayout = { "" };
 	};
 }

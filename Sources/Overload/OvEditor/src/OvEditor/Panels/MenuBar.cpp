@@ -237,6 +237,8 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 				{
 					auto& uiManager = *EDITOR_CONTEXT(uiManager);
 					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::SetLayout, &uiManager, entry.path()), 1));
+
+					Settings::EditorSettings::LatestLayout = entry.path().string();
 				};
 				
 				auto& contextualMenu = layoutMenuItem.AddPlugin<OvUI::Plugins::ContextualMenu>();
@@ -263,8 +265,8 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 					layoutMenuItem.name = p_newName;
 					
 					auto& uiManager = *EDITOR_CONTEXT(uiManager);
-					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::RenameLayout, &uiManager, entry, layoutsPath / (p_newName + ".ini")), 1));
-
+					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::RenameLayout, &uiManager, entry.path(), layoutsPath / (p_newName + ".ini")), 1));
+					
 					contextualMenu.Close();
 				};
 			}
