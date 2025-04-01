@@ -211,7 +211,7 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 	auto& saveNewMenuList = layoutMenuList.CreateWidget<MenuList>("Save New");
 	auto& layoutInputText = saveNewMenuList.CreateWidget<InputFields::InputText>("Layout Name");
 	layoutInputText.selectAllOnClick = true;
-	layoutInputText.EnterPressedEvent += [this, &layoutsPath](std::string p_input)
+	layoutInputText.EnterPressedEvent += [&layoutsPath](std::string p_input)
 	{
 		if (p_input.empty())
 			return;
@@ -222,7 +222,7 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 
 	auto& loadMenuList = layoutMenuList.CreateWidget<MenuList>("Load");
 
-	loadMenuList.ClickedEvent += [&, layoutsPath]
+	loadMenuList.ClickedEvent += [&]
 	{
 		loadMenuList.RemoveAllWidgets();
 
@@ -233,7 +233,7 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 				auto& layoutMenuItem = loadMenuList.CreateWidget<MenuItem>(entry.path().stem().string());
 				layoutMenuItem.name = entry.path().stem().string();
 
-				layoutMenuItem.ClickedEvent += [this, entry]
+				layoutMenuItem.ClickedEvent += [entry]
 				{
 					auto& uiManager = *EDITOR_CONTEXT(uiManager);
 					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::SetLayout, &uiManager, entry.path()), 1));
@@ -242,7 +242,7 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 				auto& contextualMenu = layoutMenuItem.AddPlugin<OvUI::Plugins::ContextualMenu>();
 				auto& deleteMenuItem = contextualMenu.CreateWidget<MenuItem>("Delete");
 
-				deleteMenuItem.ClickedEvent += [this, &layoutMenuItem, entry]
+				deleteMenuItem.ClickedEvent += [entry, &layoutMenuItem]
 				{
 					auto& uiManager = *EDITOR_CONTEXT(uiManager);
 					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::DeleteLayout, &uiManager, entry.path()), 1));
@@ -255,7 +255,7 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 				renameInputText.content = entry.path().stem().string();
 				renameInputText.selectAllOnClick = true;
 
-				renameInputText.EnterPressedEvent += [this, entry, layoutsPath, &contextualMenu, &layoutMenuItem](std::string p_newName)
+				renameInputText.EnterPressedEvent += [entry, &layoutMenuItem, &layoutsPath, &contextualMenu](std::string p_newName)
 				{
 					if (p_newName.empty())
 						return;
