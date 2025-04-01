@@ -269,7 +269,14 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 					auto& uiManager = *EDITOR_CONTEXT(uiManager);
 					std::filesystem::path newPath = layoutsPath / (p_newName + ".ini");
 					EDITOR_EXEC(DelayAction(std::bind(&OvUI::Core::UIManager::RenameLayout, &uiManager, *currentPath, newPath), 1));
+
+					if (Settings::EditorSettings::LatestLayout.Get() == currentPath->string())
+					{
+						Settings::EditorSettings::LatestLayout = newPath.string();
+					}
+
 					*currentPath = newPath;
+
 					contextualMenu.Close();
 				};
 			}

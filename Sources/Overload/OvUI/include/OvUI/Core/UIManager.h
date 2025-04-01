@@ -177,7 +177,7 @@ namespace OvUI::Core
 		bool m_dockingState;
 		Modules::Canvas* m_currentCanvas = nullptr;
 		std::unordered_map<std::string, ImFont*> m_fonts;
-		std::filesystem::path m_layoutSaveFilename = "imgui.ini";
+		std::string m_layoutSaveFilename = "imgui.ini";
 		const std::filesystem::path m_defaultLayout;
 		const std::filesystem::path m_layoutsPath;
 	};

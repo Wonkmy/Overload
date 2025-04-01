@@ -24,7 +24,7 @@ m_layoutsPath(OvTools::Utils::SystemCalls::GetPathToAppdata() + "\\OverloadTech\
 	ImGui_ImplGlfw_InitForOpenGL(p_glfwWindow, true);
 	ImGui_ImplOpenGL3_Init(p_glslVersion.data());
 
-	std::filesystem::create_directory(m_layoutsPath);
+	std::filesystem::create_directories(m_layoutsPath);
 }
 
 OvUI::Core::UIManager::~UIManager()
@@ -225,7 +225,7 @@ void OvUI::Core::UIManager::UseDefaultFont()
 void OvUI::Core::UIManager::EnableEditorLayoutSave(bool p_value)
 {
 	if (p_value)
-		ImGui::GetIO().IniFilename = m_layoutSaveFilename.string().c_str();
+		ImGui::GetIO().IniFilename = m_layoutSaveFilename.c_str();
 	else
 		ImGui::GetIO().IniFilename = nullptr;
 }
@@ -237,9 +237,10 @@ bool OvUI::Core::UIManager::IsEditorLayoutSaveEnabled() const
 
 void OvUI::Core::UIManager::SetEditorLayoutSaveFilename(const std::filesystem::path& p_filePath)
 {
-	m_layoutSaveFilename = p_filePath;
+	m_layoutSaveFilename = p_filePath.string();
+
 	if (IsEditorLayoutSaveEnabled())
-		ImGui::GetIO().IniFilename = m_layoutSaveFilename.string().c_str();
+		ImGui::GetIO().IniFilename = m_layoutSaveFilename.c_str();
 }
 
 void OvUI::Core::UIManager::SetEditorLayoutAutosaveFrequency(float p_frequency)
@@ -281,17 +282,19 @@ void OvUI::Core::UIManager::SaveLayout(const std::filesystem::path& p_filePath)
 {
 	SetEditorLayoutSaveFilename(p_filePath);
 
-	ImGui::SaveIniSettingsToDisk(m_layoutSaveFilename.string().c_str());
+	ImGui::SaveIniSettingsToDisk(m_layoutSaveFilename.c_str());
 }
 
 void OvUI::Core::UIManager::SaveCurrentLayout()
 {
 	if (!std::filesystem::exists(m_layoutSaveFilename))
 	{
-		m_layoutSaveFilename = (m_layoutsPath / "layout.ini").string();
-		SetEditorLayoutSaveFilename(m_layoutSaveFilename);
+		auto path = m_layoutsPath / "layout.ini";
+		m_layoutSaveFilename = path.string();
+
+		SetEditorLayoutSaveFilename(path);
 	}
-	ImGui::SaveIniSettingsToDisk(m_layoutSaveFilename.string().c_str());
+	ImGui::SaveIniSettingsToDisk(m_layoutSaveFilename.c_str());
 }
 
 void OvUI::Core::UIManager::SetLayout(const std::filesystem::path& p_filePath)
