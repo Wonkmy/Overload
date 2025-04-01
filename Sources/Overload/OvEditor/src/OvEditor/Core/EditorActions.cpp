@@ -374,12 +374,12 @@ void OvEditor::Core::EditorActions::SetActorSpawnMode(EActorSpawnMode p_value)
 
 void OvEditor::Core::EditorActions::ResetLayout()
 {
-    DelayAction([this]() {m_context.uiManager->ResetLayout("Config\\layout.ini"); });
+    DelayAction([this]() {m_context.uiManager->ResetToDefaultLayout(); });
 }
 
-void OvEditor::Core::EditorActions::SaveLayout(const std::string& p_fileName)
+void OvEditor::Core::EditorActions::SaveLayout(const std::filesystem::path& p_filePath)
 {
-	DelayAction([&]() {m_context.uiManager->SaveLayout(std::ref(p_fileName)); });
+	DelayAction([&]() {m_context.uiManager->SaveLayout(p_filePath); });
 }
 
 void OvEditor::Core::EditorActions::SaveCurrentLayout()
@@ -387,9 +387,9 @@ void OvEditor::Core::EditorActions::SaveCurrentLayout()
 	DelayAction([&]() {m_context.uiManager->SaveCurrentLayout(); });
 }
 
-void OvEditor::Core::EditorActions::SetLayout(const std::string& p_fileName)
+void OvEditor::Core::EditorActions::SetLayout(const std::filesystem::path& p_filePath)
 {
-	DelayAction([&]() {m_context.uiManager->SetLayout(std::ref(p_fileName)); });
+	DelayAction([&]() {m_context.uiManager->SetLayout(p_filePath); });
 }
 
 void OvEditor::Core::EditorActions::SetSceneViewCameraSpeed(int p_speed)

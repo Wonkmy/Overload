@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <unordered_map>
 
@@ -77,7 +78,7 @@ namespace OvUI::Core
 		/**
 		* Defines a filename for the editor layout save file
 		*/
-		void SetEditorLayoutSaveFilename(const std::string& p_filename);
+		void SetEditorLayoutSaveFilename(const std::filesystem::path& p_filePath);
 
 		/**
 		* Defines a frequency (in seconds) for the auto saving system of the editor layout
@@ -97,6 +98,12 @@ namespace OvUI::Core
 		void EnableDocking(bool p_value);
 
 		/**
+		* Reset the UI layout to the default configuration file
+		* @param p_config
+		*/
+		void ResetToDefaultLayout() const;
+
+		/**
 		* Reset the UI layout to the given configuration file
 		* @param p_config
 		*/
@@ -110,9 +117,9 @@ namespace OvUI::Core
 
 		/**
 		* Save the UI layout to the given configuration file
-		* @param p_fileName
+		* @param p_filePath
 		*/
-		void SaveLayout(const std::string& p_fileName);
+		void SaveLayout(const std::filesystem::path& p_filePath);
 
 		/**
 		 * Save the current UI layout to the last used configuration file
@@ -121,22 +128,22 @@ namespace OvUI::Core
 
 		/**
 		 * Set and load the UI layout from the given configuration file
-		 * @param p_fileName
+		 * @param p_filePath
 		 */
-		void SetLayout(const std::string& p_fileName);
+		void SetLayout(const std::filesystem::path& p_filePath);
 
 		/**
 		 * Delete the UI layout configuration file
-		 * @param p_fileName
+		 * @param p_filePath
 		 */
-		void DeleteLayout(const std::string& p_fileName);
+		void DeleteLayout(const std::filesystem::path& p_filePath);
 
 		/**
 		 * Rename a UI layout configuration file
-		 * @param p_fileName
-		 * @param p_newFileName
+		 * @param p_filePath
+		 * @param p_newFilePath
 		 */
-		void RenameLayout(const std::string& p_fileName, const std::string& p_newFileName);
+		void RenameLayout(const std::filesystem::path& p_filePath, const std::filesystem::path& p_newFilePath);
 
 		/**
 		* Return true if the docking system is enabled
@@ -160,7 +167,7 @@ namespace OvUI::Core
 		*/
 		void Render();
 
-		std::string GetLayoutsPath();
+		const std::filesystem::path& GetLayoutsPath() const;
 
 	private:
 		void PushCurrentFont();
@@ -170,8 +177,8 @@ namespace OvUI::Core
 		bool m_dockingState;
 		Modules::Canvas* m_currentCanvas = nullptr;
 		std::unordered_map<std::string, ImFont*> m_fonts;
-		std::string m_layoutSaveFilename = "imgui.ini";
-		const std::string m_defaultLayout;
-		const std::string m_layoutsPath;
+		std::filesystem::path m_layoutSaveFilename = "imgui.ini";
+		const std::filesystem::path m_defaultLayout;
+		const std::filesystem::path m_layoutsPath;
 	};
 }

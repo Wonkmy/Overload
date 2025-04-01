@@ -71,9 +71,9 @@ namespace OvEditor::Core
 
 		/**
 		* Save the editor layout to the given configuration file
-		* @param p_fileName
+		* @param p_filePath
 		*/
-		void SaveLayout(const std::string& p_fileName);
+		void SaveLayout(const std::filesystem::path& p_filePath);
 
 		/**
 		 * Save the current editor layout to the last used configuration file
@@ -82,9 +82,9 @@ namespace OvEditor::Core
 
 		/**
 		 * Set and load the editor layout from the given configuration file
-		 * @param p_fileName
+		 * @param p_filePath
 		 */
-		void SetLayout(const std::string& p_fileName);
+		void SetLayout(const std::filesystem::path& p_filePath);
 
 		/**
 		* Defines the scene view camera speed

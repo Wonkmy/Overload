@@ -67,12 +67,6 @@ namespace OvTools::Utils
 		static std::string GetExtension(const std::string& p_path);
 
 		/**
-		* Returns the file without the extension
-		* @param p_file
-		*/
-		static std::string GetFileWithoutExtension(const std::string& p_file);
-
-		/**
 		* Convert the EFileType value to a string
 		* @param p_fileType
 		*/

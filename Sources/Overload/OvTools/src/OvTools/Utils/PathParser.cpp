@@ -81,18 +81,6 @@ std::string OvTools::Utils::PathParser::GetExtension(const std::string & p_path)
 	return result;
 }
 
-std::string OvTools::Utils::PathParser::GetFileWithoutExtension(const std::string& p_file)
-{
-	const size_t end_pos = p_file.find_last_of('.');
-
-	if (end_pos > 0 && end_pos != std::string::npos)
-	{
-		return p_file.substr(0, end_pos);
-	}
-
-	return p_file;
-}
-
 std::string OvTools::Utils::PathParser::FileTypeToString(EFileType p_fileType)
 {
 	switch (p_fileType)

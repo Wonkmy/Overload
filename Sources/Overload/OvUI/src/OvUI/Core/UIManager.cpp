@@ -12,7 +12,7 @@
 
 OvUI::Core::UIManager::UIManager(GLFWwindow* p_glfwWindow, Styling::EStyle p_style, std::string_view p_glslVersion) :
 m_defaultLayout("Config\\layout.ini"),
-m_layoutsPath(OvTools::Utils::SystemCalls::GetPathToAppdata() + "\\OverloadTech\\OvEditor\\")
+m_layoutsPath(OvTools::Utils::SystemCalls::GetPathToAppdata() + "\\OverloadTech\\OvEditor\\Layouts\\")
 {
 	ImGui::CreateContext();
 
@@ -23,6 +23,8 @@ m_layoutsPath(OvTools::Utils::SystemCalls::GetPathToAppdata() + "\\OverloadTech\
 	
 	ImGui_ImplGlfw_InitForOpenGL(p_glfwWindow, true);
 	ImGui_ImplOpenGL3_Init(p_glslVersion.data());
+
+	std::filesystem::create_directory(m_layoutsPath);
 }
 
 OvUI::Core::UIManager::~UIManager()
@@ -223,7 +225,7 @@ void OvUI::Core::UIManager::UseDefaultFont()
 void OvUI::Core::UIManager::EnableEditorLayoutSave(bool p_value)
 {
 	if (p_value)
-		ImGui::GetIO().IniFilename = m_layoutSaveFilename.c_str();
+		ImGui::GetIO().IniFilename = m_layoutSaveFilename.string().c_str();
 	else
 		ImGui::GetIO().IniFilename = nullptr;
 }
@@ -233,11 +235,11 @@ bool OvUI::Core::UIManager::IsEditorLayoutSaveEnabled() const
 	return ImGui::GetIO().IniFilename != nullptr;
 }
 
-void OvUI::Core::UIManager::SetEditorLayoutSaveFilename(const std::string & p_filename)
+void OvUI::Core::UIManager::SetEditorLayoutSaveFilename(const std::filesystem::path& p_filePath)
 {
-	m_layoutSaveFilename = p_filename;
+	m_layoutSaveFilename = p_filePath;
 	if (IsEditorLayoutSaveEnabled())
-		ImGui::GetIO().IniFilename = m_layoutSaveFilename.c_str();
+		ImGui::GetIO().IniFilename = m_layoutSaveFilename.string().c_str();
 }
 
 void OvUI::Core::UIManager::SetEditorLayoutAutosaveFrequency(float p_frequency)
@@ -260,6 +262,11 @@ void OvUI::Core::UIManager::EnableDocking(bool p_value)
 		ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_DockingEnable;
 }
 
+void OvUI::Core::UIManager::ResetToDefaultLayout() const
+{
+	ImGui::LoadIniSettingsFromDisk(m_defaultLayout.string().c_str());
+}
+
 void OvUI::Core::UIManager::ResetLayout(const std::string& p_config) const
 {
     ImGui::LoadIniSettingsFromDisk(p_config.c_str());
@@ -270,42 +277,42 @@ void OvUI::Core::UIManager::LoadLayout(const std::string& p_fileName)
 	ImGui::LoadIniSettingsFromDisk(p_fileName.c_str());
 }
 
-void OvUI::Core::UIManager::SaveLayout(const std::string& p_fileName)
+void OvUI::Core::UIManager::SaveLayout(const std::filesystem::path& p_filePath)
 {
-	SetEditorLayoutSaveFilename(p_fileName);
+	SetEditorLayoutSaveFilename(p_filePath);
 
-	ImGui::SaveIniSettingsToDisk(m_layoutSaveFilename.c_str());
+	ImGui::SaveIniSettingsToDisk(m_layoutSaveFilename.string().c_str());
 }
 
 void OvUI::Core::UIManager::SaveCurrentLayout()
 {
 	if (!std::filesystem::exists(m_layoutSaveFilename))
 	{
-		m_layoutSaveFilename = m_layoutsPath + "layout.ini";
+		m_layoutSaveFilename = (m_layoutsPath / "layout.ini").string();
 		SetEditorLayoutSaveFilename(m_layoutSaveFilename);
 	}
-	ImGui::SaveIniSettingsToDisk(m_layoutSaveFilename.c_str());
+	ImGui::SaveIniSettingsToDisk(m_layoutSaveFilename.string().c_str());
 }
 
-void OvUI::Core::UIManager::SetLayout(const std::string& p_fileName)
+void OvUI::Core::UIManager::SetLayout(const std::filesystem::path& p_filePath)
 {
-	SetEditorLayoutSaveFilename(p_fileName);
+	SetEditorLayoutSaveFilename(p_filePath);
 
-	ImGui::LoadIniSettingsFromDisk(p_fileName.c_str());
+	ImGui::LoadIniSettingsFromDisk(p_filePath.string().c_str());
 }
 
-void OvUI::Core::UIManager::DeleteLayout(const std::string& p_fileName)
+void OvUI::Core::UIManager::DeleteLayout(const std::filesystem::path& p_filePath)
 {
-	std::filesystem::remove(p_fileName);
+	std::filesystem::remove(p_filePath);
 }
 
-void OvUI::Core::UIManager::RenameLayout(const std::string& p_fileName, const std::string& p_newFileName)
+void OvUI::Core::UIManager::RenameLayout(const std::filesystem::path& p_filePath, const std::filesystem::path& p_newFilePath)
 {
-	std::filesystem::rename(p_fileName, p_newFileName);
+	std::filesystem::rename(p_filePath, p_newFilePath);
 
-	if (m_layoutSaveFilename == p_fileName)
+	if (m_layoutSaveFilename == p_filePath)
 	{
-		SetEditorLayoutSaveFilename(p_newFileName);
+		SetEditorLayoutSaveFilename(p_newFilePath);
 	}
 }
 
@@ -335,7 +342,7 @@ void OvUI::Core::UIManager::Render()
 	}
 }
 
-std::string OvUI::Core::UIManager::GetLayoutsPath()
+const std::filesystem::path& OvUI::Core::UIManager::GetLayoutsPath() const
 {
 	return m_layoutsPath;
 }
