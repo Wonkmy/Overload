@@ -7,12 +7,13 @@
 #pragma once
 
 #include <filesystem>
-#include <unordered_map>
 #include <queue>
+#include <unordered_map>
 
+#include <OvRendering/Resources/Loaders/TextureLoader.h>
 #include <OvUI/Panels/PanelWindow.h>
 #include <OvUI/Widgets/Layout/TreeNode.h>
-#include <OvRendering/Resources/Loaders/TextureLoader.h>
+#include <OvUI/Widgets/Layout/Group.h>
 
 namespace OvEditor::Panels
 {
@@ -58,9 +59,6 @@ namespace OvEditor::Panels
 	private:
 		void ParseFolder(OvUI::Widgets::Layout::TreeNode& p_root, const std::filesystem::directory_entry& p_directory, bool p_isEngineItem, bool p_scriptFolder = false);
 		void ConsiderItem(OvUI::Widgets::Layout::TreeNode* p_root, const std::filesystem::directory_entry& p_entry, bool p_isEngineItem, bool p_autoOpen = false, bool p_scriptFolder = false);
-
-	public:
-		static const std::string __FILENAMES_CHARS;
 
 	private:
 		std::string m_engineAssetFolder;
