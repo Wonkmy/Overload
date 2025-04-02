@@ -155,12 +155,7 @@ void OvUI::Core::UIManager::ResetToDefaultLayout() const
 
 void OvUI::Core::UIManager::ResetLayout(const std::string& p_config) const
 {
-    ImGui::LoadIniSettingsFromDisk(p_config.c_str());
-}
-
-void OvUI::Core::UIManager::LoadLayout(const std::string& p_fileName)
-{
-	ImGui::LoadIniSettingsFromDisk(p_fileName.c_str());
+	ImGui::LoadIniSettingsFromDisk(p_config.c_str());
 }
 
 void OvUI::Core::UIManager::SaveLayout(const std::filesystem::path& p_filePath)
@@ -180,6 +175,14 @@ void OvUI::Core::UIManager::SaveCurrentLayout()
 		SetEditorLayoutSaveFilename(path);
 	}
 	ImGui::SaveIniSettingsToDisk(m_layoutSaveFilename.c_str());
+}
+
+void OvUI::Core::UIManager::SetIniLayout(const std::string& p_fileName)
+{
+	auto iniLayoutPath = m_layoutsPath / (p_fileName + ".ini");
+
+	if(std::filesystem::exists(iniLayoutPath))
+		SetLayout(iniLayoutPath);
 }
 
 void OvUI::Core::UIManager::SetLayout(const std::filesystem::path& p_filePath)

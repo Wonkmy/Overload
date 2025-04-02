@@ -110,12 +110,6 @@ namespace OvUI::Core
 		void ResetLayout(const std::string& p_config) const;
 
 		/**
-		* Load the UI layout from the given configuration file
-		* @param p_fileName
-		*/
-		void LoadLayout(const std::string& p_fileName);
-
-		/**
 		* Save the UI layout to the given configuration file
 		* @param p_filePath
 		*/
@@ -125,6 +119,12 @@ namespace OvUI::Core
 		 * Save the current UI layout to the last used configuration file
 		 */
 		void SaveCurrentLayout();
+
+		/**
+		 * Set and load the UI ini layout from the given file name
+		 * @param p_fileName
+		 */
+		void SetIniLayout(const std::string& p_fileName);
 
 		/**
 		 * Set and load the UI layout from the given configuration file
