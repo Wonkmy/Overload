@@ -1,13 +1,9 @@
-project "OvRendering"
+project "ImGui"
 	kind "StaticLib"
 	language "C++"
 	cppdialect "C++20"
-	files { "**.h", "**.inl", "**.cpp", "**.lua" }
-	includedirs {
-		dependdir .. "glew/include", dependdir .. "stb_image/include", dependdir .. "assimp/include",
-		"%{wks.location}/OvDebug/include", "%{wks.location}/OvMaths/include", "%{wks.location}/OvTools/include",
-		"include"
-	}
+	files { "**.h", "**.cpp", "**.lua" }
+	includedirs { "include", dependdir .. "glfw/include", dependdir .. "glew/include" }
 	targetdir (outputdir .. "%{cfg.buildcfg}/%{prj.name}")
 	objdir (objoutdir .. "%{cfg.buildcfg}/%{prj.name}")
 	characterset ("MBCS")
