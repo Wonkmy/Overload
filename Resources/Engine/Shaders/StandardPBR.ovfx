@@ -20,6 +20,10 @@ out VS_OUT
     vec3 TangentFragPos;
 } vs_out;
 
+#feature DEPTH_ONLY
+
+uniform mat4 _LightSpaceMatrix;
+
 void main()
 {
     vs_out.FragPos = vec3(ubo_Model * vec4(geo_Pos, 1.0));
@@ -29,7 +33,11 @@ void main()
     vs_out.TangentViewPos = transpose(vs_out.TBN) * ubo_ViewPos;
     vs_out.TangentFragPos = transpose(vs_out.TBN) * vs_out.FragPos;
 
-    gl_Position = ubo_Projection * ubo_View * vec4(vs_out.FragPos, 1.0);
+    gl_Position =
+#if defined(DEPTH_ONLY)
+        _LightSpaceMatrix *
+#endif
+        ubo_Projection * ubo_View * vec4(vs_out.FragPos, 1.0);
 }
 
 #shader fragment
@@ -68,8 +76,13 @@ uniform mat4 _LightSpaceMatrix;
 
 out vec4 FRAGMENT_COLOR;
 
+#feature DEPTH_ONLY
+
 void main()
 {
+#if defined(DEPTH_ONLY)
+    FRAGMENT_COLOR = vec4(1.0);
+#else
     vec2 texCoords = TileAndOffsetTexCoords(fs_in.TexCoords, u_TextureTiling, u_TextureOffset);
     texCoords = ApplyParallaxMapping(texCoords, u_HeightMap, fs_in.TangentViewPos, fs_in.TangentFragPos, u_HeightScale);
 
@@ -82,4 +95,5 @@ void main()
     {
         FRAGMENT_COLOR = vec4(0.0);
     }
+#endif
 }

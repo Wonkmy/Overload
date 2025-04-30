@@ -19,12 +19,6 @@ constexpr uint8_t kMaxShadowMaps = 1;
 OvCore::Rendering::ShadowRenderPass::ShadowRenderPass(OvRendering::Core::CompositeRenderer& p_renderer) :
 	OvRendering::Core::ARenderPass(p_renderer)
 {
-	const auto shadowShader = OVSERVICE(OvCore::ResourceManagement::ShaderManager).GetResource(":Shaders\\Shadow.ovfx");
-	OVASSERT(shadowShader, "Cannot find the shadow shader");
-
-	m_shadowMaterial.SetShader(shadowShader);
-	m_shadowMaterial.SetFrontfaceCulling(false);
-	m_shadowMaterial.SetBackfaceCulling(false);
 }
 
 void OvCore::Rendering::ShadowRenderPass::Draw(OvRendering::Data::PipelineState p_pso)
@@ -61,11 +55,10 @@ void OvCore::Rendering::ShadowRenderPass::Draw(OvRendering::Data::PipelineState 
 					light.UpdateShadowData(frameDescriptor.camera.value());
 					const auto& lightSpaceMatrix = light.GetLightSpaceMatrix();
 					const auto& shadowBuffer = light.GetShadowBuffer();
-					m_shadowMaterial.SetProperty("_LightSpaceMatrix", lightSpaceMatrix);
 					shadowBuffer.Bind();
 					m_renderer.SetViewport(0, 0, light.shadowMapResolution, light.shadowMapResolution);
 					m_renderer.Clear(true, true, true);
-					DrawOpaques(pso, scene);
+					DrawOpaques(pso, scene, lightSpaceMatrix);
 					shadowBuffer.Unbind();
 				}
 				else
@@ -86,7 +79,8 @@ void OvCore::Rendering::ShadowRenderPass::Draw(OvRendering::Data::PipelineState 
 
 void OvCore::Rendering::ShadowRenderPass::DrawOpaques(
 	OvRendering::Data::PipelineState p_pso,
-	OvCore::SceneSystem::Scene& p_scene
+	OvCore::SceneSystem::Scene& p_scene,
+	const OvMaths::FMatrix4& p_lightSpaceMatrix
 )
 {
 	for (auto modelRenderer : p_scene.GetFastAccessComponents().modelRenderers)
@@ -108,14 +102,14 @@ void OvCore::Rendering::ShadowRenderPass::DrawOpaques(
 						{
 							OvRendering::Entities::Drawable drawable;
 							drawable.mesh = *mesh;
-							drawable.material = m_shadowMaterial;
-							drawable.stateMask = m_shadowMaterial.GenerateStateMask();
+							drawable.material = material;
+							drawable.stateMask = material->GenerateStateMask();
 
 							drawable.material.value().SetProperty("_ModelMatrix", modelMatrix);
+							drawable.material.value().SetProperty("_LightSpaceMatrix", p_lightSpaceMatrix);
 
 							m_renderer.DrawEntity(p_pso, drawable);
 						}
-
 					}
 				}
 			}

@@ -13,12 +13,20 @@ out VS_OUT
     vec2 TexCoords;
 } vs_out;
 
+#feature DEPTH_ONLY
+
+uniform mat4 _LightSpaceMatrix;
+
 void main()
 {
     vs_out.FragPos = vec3(ubo_Model * vec4(geo_Pos, 1.0));
     vs_out.TexCoords = geo_TexCoords;
 
-    gl_Position = ubo_Projection * ubo_View * vec4(vs_out.FragPos, 1.0);
+    gl_Position = 
+#if defined(DEPTH_ONLY)
+        _LightSpaceMatrix *
+#endif
+        ubo_Projection * ubo_View * vec4(vs_out.FragPos, 1.0);
 }
 
 #shader fragment
@@ -40,8 +48,14 @@ uniform vec2 u_TextureOffset = vec2(0.0);
 
 out vec4 FRAGMENT_COLOR;
 
+#feature DEPTH_ONLY
+
 void main()
 {
+#if defined(DEPTH_ONLY)
+    FRAGMENT_COLOR = vec4(1.0);
+#else
     vec2 texCoords = TileAndOffsetTexCoords(fs_in.TexCoords, u_TextureTiling, u_TextureOffset);
     FRAGMENT_COLOR = texture(u_DiffuseMap, texCoords) * u_Diffuse;
+#endif
 }

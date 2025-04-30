@@ -6,12 +6,11 @@
 
 #pragma once
 
-#include <OvMaths/FTransform.h> // TODO: Unused right now, might want to use it instead of model matrix
 #include <OvTools/Utils/OptRef.h>
 
-#include "OvRendering/Resources/Mesh.h"
-#include "OvRendering/Data/Material.h"
-#include "OvRendering/Data/Describable.h"
+#include <OvRendering/Data/Describable.h>
+#include <OvRendering/Data/Material.h>
+#include <OvRendering/Resources/Mesh.h>
 
 namespace OvRendering::Entities
 {
@@ -24,5 +23,6 @@ namespace OvRendering::Entities
 		OvTools::Utils::OptRef<OvRendering::Data::Material> material;
 		OvRendering::Data::StateMask stateMask;
 		OvRendering::Settings::EPrimitiveMode primitiveMode = OvRendering::Settings::EPrimitiveMode::TRIANGLES;
+		OvRendering::Resources::Shader::FeatureSet shaderFeatureSet;
 	};
 }
