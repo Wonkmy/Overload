@@ -4,7 +4,7 @@
 * @licence: MIT
 */
 
-#include <gl/glew.h>
+#include <glad.h>
 
 #include <OvDebug/Assertion.h>
 #include <OvRendering/HAL/OpenGL/GLVertexArray.h>
@@ -44,7 +44,7 @@ namespace
 template<>
 OvRendering::HAL::GLVertexArray::TVertexArray()
 {
-	glGenVertexArrays(1, &m_context.id);
+	glCreateVertexArrays(1, &m_context.id);
 }
 
 template<>
