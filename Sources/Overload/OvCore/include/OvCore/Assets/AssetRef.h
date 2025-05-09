@@ -1,7 +1,9 @@
 #pragma once
 
 #include <concepts>
+#include <optional>
 #include <OvCore/Assets/Asset.h>
+#include <OvCore/Global/ServiceLocator.h>
 
 namespace OvCore::Assets
 {
@@ -22,6 +24,23 @@ namespace OvCore::Assets
 	template<AssetType T>
 	class AssetRef : public GenericAssetRef
 	{
+	public:
+		AssetID id;
 
+		/**
+		* Returns the underlying asset.
+		*/
+		std::optional<T> Get()
+		{
+			auto& assetRegistry = OvCore::Global::ServiceLocator::Get<AssetRegistry>();
+			return assetRegistry.GetAsset(id);
+			return static_cast<T&>(m_assets[id]);
+		}
+
+		bool IsExpired() const
+		{
+			auto& assetRegistry = OvCore::Global::ServiceLocator::Get<AssetRegistry>();
+			return assetRegistry.
+		}
 	};
 }
