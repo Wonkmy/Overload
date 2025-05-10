@@ -7,7 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-
+#include <ranges>
 #include <tinyxml2.h>
 
 #include <OvDebug/Logger.h>
@@ -630,14 +630,27 @@ void OvEditor::Core::EditorActions::MoveToTarget(OvCore::ECS::Actor& p_target)
 
 void OvEditor::Core::EditorActions::CompileShaders()
 {
-	for (auto shader : m_context.shaderManager.GetResources())
-		OvRendering::Resources::Loaders::ShaderLoader::Recompile(*shader.second, GetRealPath(shader.second->path));
+	using namespace OvRendering::Resources::Loaders;
+
+	const auto previousLoggingSettings = ShaderLoader::GetLoggingSettings();
+	auto newLoggingSettings = previousLoggingSettings;
+	newLoggingSettings.summary = true; // Force enable summary logging
+	ShaderLoader::SetLoggingSettings(newLoggingSettings);
+
+	for (const auto shader : m_context.shaderManager.GetResources() | std::views::values)
+	{
+		m_context.shaderManager.ReloadResource(shader, GetRealPath(shader->path));
+	}
+
+	ShaderLoader::SetLoggingSettings(previousLoggingSettings);
 }
 
 void OvEditor::Core::EditorActions::SaveMaterials()
 {
-	for (auto& [id, material] : m_context.materialManager.GetResources())
+	for (const auto material : m_context.materialManager.GetResources() | std::views::values)
+	{
 		OvCore::Resources::Loaders::MaterialLoader::Save(*material, GetRealPath(material->path));
+	}
 }
 
 bool OvEditor::Core::EditorActions::ImportAsset(const std::string& p_initialDestinationDirectory)
