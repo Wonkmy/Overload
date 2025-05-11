@@ -25,6 +25,8 @@ namespace tinyxml2
 
 namespace OvEditor::Core
 {
+	enum class EGizmoOperation;
+
 	/**
 	* A set of editor actions
 	*/
@@ -147,6 +149,19 @@ namespace OvEditor::Core
 		* Play the current frame and pause the editor
 		*/
 		void NextFrame();
+		#pragma endregion
+
+		#pragma region SCENE_VIEW
+		/**
+		* Sets the gizmo operation to use
+		* @param p_operation
+		*/
+		void SetGizmoOperation(EGizmoOperation p_operation);
+
+		/**
+		* Returns the current gizmo operation
+		*/
+		EGizmoOperation GetGizmoOperation() const;
 		#pragma endregion
 
 		#pragma region ACTOR_CREATION_DESTRUCTION
@@ -394,6 +409,7 @@ namespace OvEditor::Core
 		OvTools::Eventing::Event<OvCore::ECS::Actor&> ActorSelectedEvent;
 		OvTools::Eventing::Event<OvCore::ECS::Actor&> ActorUnselectedEvent;
 		OvTools::Eventing::Event<EEditorMode> EditorModeChangedEvent;
+		OvTools::Eventing::Event<EGizmoOperation> EditorOperationChanged;
 		OvTools::Eventing::Event<> PlayEvent;
 
 	private:

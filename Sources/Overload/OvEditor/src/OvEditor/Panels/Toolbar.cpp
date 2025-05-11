@@ -4,13 +4,24 @@
 * @licence: MIT
 */
 
-#include <OvUI/Widgets/Layout/Spacing.h>
-
-#include "OvEditor/Panels/Toolbar.h"
-#include "OvEditor/Core/EditorActions.h"
-
 #include <OvCore/Global/ServiceLocator.h>
 #include <OvCore/ResourceManagement/TextureManager.h>
+
+#include <OvEditor/Core/EditorActions.h>
+#include <OvEditor/Core/GizmoBehaviour.h>
+#include <OvEditor/Panels/Toolbar.h>
+
+#include <OvUI/Widgets/Layout/Spacing.h>
+
+namespace
+{
+	OvUI::Types::Color GetButtonTint(bool p_selected)
+	{
+		return p_selected ?
+			OvUI::Types::Color::Yellow :
+			OvUI::Types::Color::White;
+	}
+}
 
 OvEditor::Panels::Toolbar::Toolbar
 (
@@ -19,65 +30,64 @@ OvEditor::Panels::Toolbar::Toolbar
 	const OvUI::Settings::PanelWindowSettings& p_windowSettings
 ) : PanelWindow(p_title, p_opened, p_windowSettings)
 {
-	std::string iconFolder = ":Textures/Icons/";
+	using namespace OvUI::Widgets;
+	using namespace OvUI::Widgets::Buttons;
 
+	const auto iconSize = OvMaths::FVector2{ 20, 20 };
 	auto& textureManager = OvCore::Global::ServiceLocator::Get<OvCore::ResourceManagement::TextureManager>();
+	auto& editorResources = EDITOR_CONTEXT(editorResources);
 
-	m_playButton = &CreateWidget<OvUI::Widgets::Buttons::ButtonImage>(EDITOR_CONTEXT(editorResources)->GetTexture("Play")->GetTexture().GetID(), OvMaths::FVector2{ 20, 20 });
-	m_pauseButton = &CreateWidget<OvUI::Widgets::Buttons::ButtonImage>(EDITOR_CONTEXT(editorResources)->GetTexture("Pause")->GetTexture().GetID(), OvMaths::FVector2{ 20, 20 });
-	m_stopButton = &CreateWidget<OvUI::Widgets::Buttons::ButtonImage>(EDITOR_CONTEXT(editorResources)->GetTexture("Stop")->GetTexture().GetID(), OvMaths::FVector2{ 20, 20 });
-	m_nextButton = &CreateWidget<OvUI::Widgets::Buttons::ButtonImage>(EDITOR_CONTEXT(editorResources)->GetTexture("Next")->GetTexture().GetID(), OvMaths::FVector2{ 20, 20 });
+	auto& translate = CreateWidget<ButtonImage>(editorResources->GetTexture("Move")->GetTexture().GetID(), iconSize);
+	translate.lineBreak = false;
+	translate.ClickedEvent += []() { EDITOR_EXEC(SetGizmoOperation(OvEditor::Core::EGizmoOperation::TRANSLATE)); };
 
-	CreateWidget<OvUI::Widgets::Layout::Spacing>(0).lineBreak = false;
-	auto& refreshButton = CreateWidget<OvUI::Widgets::Buttons::ButtonImage>(EDITOR_CONTEXT(editorResources)->GetTexture("Refresh")->GetTexture().GetID(), OvMaths::FVector2{ 20, 20 });
+	auto& rotate = CreateWidget<ButtonImage>(editorResources->GetTexture("Rotate")->GetTexture().GetID(), iconSize);
+	rotate.lineBreak = false;
+	rotate.ClickedEvent += []() { EDITOR_EXEC(SetGizmoOperation(OvEditor::Core::EGizmoOperation::ROTATE)); };
 
-	m_playButton->lineBreak		= false;
-	m_pauseButton->lineBreak	= false;
-	m_stopButton->lineBreak		= false;
-	m_nextButton->lineBreak		= false;
-	refreshButton.lineBreak		= false;
+	auto& scale = CreateWidget<ButtonImage>(editorResources->GetTexture("Scale")->GetTexture().GetID(), iconSize);
+	scale.lineBreak = false;
+	scale.ClickedEvent += []() { EDITOR_EXEC(SetGizmoOperation(OvEditor::Core::EGizmoOperation::SCALE)); };
 
-	m_playButton->ClickedEvent	+= EDITOR_BIND(StartPlaying);
-	m_pauseButton->ClickedEvent	+= EDITOR_BIND(PauseGame);
-	m_stopButton->ClickedEvent	+= EDITOR_BIND(StopPlaying);
-	m_nextButton->ClickedEvent	+= EDITOR_BIND(NextFrame);
-	refreshButton.ClickedEvent	+= EDITOR_BIND(RefreshScripts);
+	auto updateGizmoOperation = [&translate, &rotate, &scale](Core::EGizmoOperation p_operation) {
+		using enum Core::EGizmoOperation;
+		translate.tint = GetButtonTint(p_operation == TRANSLATE);
+		rotate.tint = GetButtonTint(p_operation == ROTATE);
+		scale.tint = GetButtonTint(p_operation == SCALE);
+	};
 
-	EDITOR_EVENT(EditorModeChangedEvent) += [this](OvEditor::Core::EditorActions::EEditorMode p_newMode)
-	{
-		auto enable = [](OvUI::Widgets::Buttons::ButtonImage* p_button, bool p_enable)
-		{
-			p_button->disabled = !p_enable;
-			p_button->tint = p_enable ? OvUI::Types::Color{ 1.0f, 1.0f, 1.0f, 1.0f} : OvUI::Types::Color{1.0f, 1.0f, 1.0f, 0.15f};
-		};
+	updateGizmoOperation(EDITOR_EXEC(GetGizmoOperation()));
 
-		switch (p_newMode)
-		{
-		case OvEditor::Core::EditorActions::EEditorMode::EDIT:
-			enable(m_playButton, true);
-			enable(m_pauseButton, false);
-			enable(m_stopButton, false);
-			enable(m_nextButton, false);
-			break;
-		case OvEditor::Core::EditorActions::EEditorMode::PLAY:
-			enable(m_playButton, false);
-			enable(m_pauseButton, true);
-			enable(m_stopButton, true);
-			enable(m_nextButton, true);
-			break;
-		case OvEditor::Core::EditorActions::EEditorMode::PAUSE:
-			enable(m_playButton, true);
-			enable(m_pauseButton, false);
-			enable(m_stopButton, true);
-			enable(m_nextButton, true);
-			break;
-		case OvEditor::Core::EditorActions::EEditorMode::FRAME_BY_FRAME:
-			enable(m_playButton, true);
-			enable(m_pauseButton, false);
-			enable(m_stopButton, true);
-			enable(m_nextButton, true);
-			break;
-		}
+	EDITOR_EVENT(EditorOperationChanged) += updateGizmoOperation;
+
+	CreateWidget<Layout::Spacing>().lineBreak = false;
+
+	m_playButton = &CreateWidget<ButtonImage>(editorResources->GetTexture("Play")->GetTexture().GetID(), iconSize);
+	m_pauseButton = &CreateWidget<ButtonImage>(editorResources->GetTexture("Pause")->GetTexture().GetID(), iconSize);
+	m_stopButton = &CreateWidget<ButtonImage>(editorResources->GetTexture("Stop")->GetTexture().GetID(), iconSize);
+	m_nextButton = &CreateWidget<ButtonImage>(editorResources->GetTexture("Next")->GetTexture().GetID(), iconSize);
+
+	CreateWidget<Layout::Spacing>(0).lineBreak = false;
+	auto& refreshButton = CreateWidget<ButtonImage>(editorResources->GetTexture("Refresh")->GetTexture().GetID(), iconSize);
+
+	m_playButton->lineBreak = false;
+	m_pauseButton->lineBreak = false;
+	m_stopButton->lineBreak = false;
+	m_nextButton->lineBreak = false;
+	refreshButton.lineBreak = false;
+
+	m_playButton->ClickedEvent += EDITOR_BIND(StartPlaying);
+	m_pauseButton->ClickedEvent += EDITOR_BIND(PauseGame);
+	m_stopButton->ClickedEvent += EDITOR_BIND(StopPlaying);
+	m_nextButton->ClickedEvent += EDITOR_BIND(NextFrame);
+	refreshButton.ClickedEvent += EDITOR_BIND(RefreshScripts);
+
+	EDITOR_EVENT(EditorModeChangedEvent) += [this](Core::EditorActions::EEditorMode p_mode) {
+		using enum Core::EditorActions::EEditorMode;
+		m_playButton->disabled = !(p_mode == EDIT || p_mode == FRAME_BY_FRAME || p_mode == PAUSE);
+		m_pauseButton->disabled = !(p_mode == PLAY);
+		m_stopButton->disabled = !(p_mode == PLAY || p_mode == FRAME_BY_FRAME || p_mode == PAUSE);
+		m_nextButton->disabled = !(p_mode == PLAY || p_mode == FRAME_BY_FRAME || p_mode == PAUSE);
 	};
 
 	EDITOR_EXEC(SetEditorMode(OvEditor::Core::EditorActions::EEditorMode::EDIT));

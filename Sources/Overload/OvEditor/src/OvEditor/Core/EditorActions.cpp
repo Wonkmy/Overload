@@ -20,6 +20,7 @@
 #include <OvCore/ECS/Components/CPhysicalSphere.h>
 
 #include <OvEditor/Core/EditorActions.h>
+#include <OvEditor/Core/GizmoBehaviour.h>
 #include <OvEditor/Panels/AssetView.h>
 #include <OvEditor/Panels/GameView.h>
 #include <OvEditor/Panels/Inspector.h>
@@ -491,6 +492,18 @@ void OvEditor::Core::EditorActions::NextFrame()
 {
 	if (m_editorMode == EEditorMode::PLAY || m_editorMode == EEditorMode::PAUSE)
 		SetEditorMode(EEditorMode::FRAME_BY_FRAME);
+}
+
+void OvEditor::Core::EditorActions::SetGizmoOperation(OvEditor::Core::EGizmoOperation p_operation)
+{
+	auto& sceneView = m_panelsManager.GetPanelAs<OvEditor::Panels::SceneView>("Scene View");
+	sceneView.SetGizmoOperation(p_operation);
+}
+
+OvEditor::Core::EGizmoOperation OvEditor::Core::EditorActions::GetGizmoOperation() const
+{
+	auto& sceneView = m_panelsManager.GetPanelAs<OvEditor::Panels::SceneView>("Scene View");
+	return sceneView.GetGizmoOperation();
 }
 
 OvMaths::FVector3 OvEditor::Core::EditorActions::CalculateActorSpawnPoint(float p_distanceToCamera)
