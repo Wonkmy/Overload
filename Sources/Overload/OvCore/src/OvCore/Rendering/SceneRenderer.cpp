@@ -303,17 +303,26 @@ OvCore::Rendering::SceneRenderer::AllDrawables OvCore::Rendering::SceneRenderer:
 
 								if (material->IsUserInterface())
 								{
-									ui.emplace(distanceToActor, drawable);
+									ui.emplace(decltype(decltype(ui)::value_type::first){
+										.order = material->GetDrawOrder(),
+										.distance = distanceToActor
+									}, drawable);
 								}
 								else
 								{
 									if (material->IsBlendable())
 									{
-										transparents.emplace(distanceToActor, drawable);
+										transparents.emplace(decltype(decltype(transparents)::value_type::first){
+											.order = material->GetDrawOrder(),
+											.distance = distanceToActor
+										}, drawable);
 									}
 									else
 									{
-										opaques.emplace(distanceToActor, drawable);
+										opaques.emplace(decltype(decltype(opaques)::value_type::first){
+											.order = material->GetDrawOrder(),
+											.distance = distanceToActor
+										}, drawable);
 									}
 								}
 							}
