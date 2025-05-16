@@ -57,14 +57,17 @@ void OvCore::Rendering::ShadowRenderPass::Draw(OvRendering::Data::PipelineState 
 			{
 				if (light.type == OvRendering::Settings::ELightType::DIRECTIONAL)
 				{
-					light.UpdateShadowData(frameDescriptor.camera.value());
-					const auto& lightSpaceMatrix = light.GetLightSpaceMatrix();
-					const auto& shadowBuffer = light.GetShadowBuffer();
-					shadowBuffer.Bind();
+					light.PrepareForShadowRendering(frameDescriptor);
+
+					engineBufferRenderFeature.SetCamera(light.shadowCamera.value());
+
+					light.shadowBuffer->Bind();
 					m_renderer.SetViewport(0, 0, light.shadowMapResolution, light.shadowMapResolution);
 					m_renderer.Clear(true, true, true);
-					DrawShadows(pso, scene, lightSpaceMatrix);
-					shadowBuffer.Unbind();
+					DrawShadows(pso, scene);
+					light.shadowBuffer->Unbind();
+
+					engineBufferRenderFeature.SetCamera(frameDescriptor.camera.value());
 				}
 				else
 				{
@@ -84,8 +87,7 @@ void OvCore::Rendering::ShadowRenderPass::Draw(OvRendering::Data::PipelineState 
 
 void OvCore::Rendering::ShadowRenderPass::DrawShadows(
 	OvRendering::Data::PipelineState p_pso,
-	OvCore::SceneSystem::Scene& p_scene,
-	const OvMaths::FMatrix4& p_lightSpaceMatrix
+	OvCore::SceneSystem::Scene& p_scene
 )
 {
 	for (auto modelRenderer : p_scene.GetFastAccessComponents().modelRenderers)
@@ -124,18 +126,18 @@ void OvCore::Rendering::ShadowRenderPass::DrawShadows(
 							drawable.stateMask.depthTest = true; // The shadow pass should always use depth test.
 							drawable.stateMask.colorWriting = false; // The shadow pass should never write color.
 							drawable.stateMask.depthWriting = true; // The shadow pass should always write depth.
-							// No front/backface culling for shadow pass.
-							// A "two-sided" shadow pass setting could be added in the future, to change this behavior.
+
+							// No front/backface culling for shadow pass (aka: two-sided shadow pass).
+							// A "two-sided" shadow pass setting could be added in the future to change this behavior.
 							drawable.stateMask.frontfaceCulling = false;
 							drawable.stateMask.backfaceCulling = false;
 
-							drawable.featureSetOverride = { shadowPassName };
+							drawable.featureSetOverride = targetMaterial.GetFeatures() + shadowPassName;
+
 							drawable.AddDescriptor<EngineDrawableDescriptor>({
 								modelMatrix,
 								materialRenderer->GetUserMatrix()
 							});
-
-							targetMaterial.SetProperty("_LightSpaceMatrix", p_lightSpaceMatrix, true);
 
 							m_renderer.DrawEntity(p_pso, drawable);
 						}
