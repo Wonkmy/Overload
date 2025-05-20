@@ -136,9 +136,14 @@ void main()
     }
 #endif
 
-#if defined(DEPTH_PASS)
-    FRAGMENT_COLOR = vec4(gl_FragCoord.zzz, 1.0);
-    return;
+#if defined(DEPTH_PASS)  
+    const float near = 0.1;
+    const float far = 50.0;
+    const float depth = gl_FragCoord.z;
+    const float z = depth * 2.0 - 1.0; // back to NDC 
+    float linearDepth = (2.0 * near * far) / (far + near - z * (far - near)) / far;
+    FRAGMENT_COLOR = vec4(vec3(linearDepth), 1.0);
+    return;  
 #endif
 
     vec2 texCoords = TileAndOffsetTexCoords(fs_in.TexCoords, u_TextureTiling, u_TextureOffset);

@@ -131,7 +131,6 @@ protected:
 			if (m_debugViewMode == OvEditor::Rendering::EDebugViewMode::WIREFRAME)
 			{
 				p_pso.rasterizationMode = OvRendering::Settings::ERasterizationMode::LINE;
-				p_pso.depthTest = false;
 			}
 			else
 			{
