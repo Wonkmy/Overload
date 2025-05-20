@@ -132,14 +132,12 @@ protected:
 			{
 				p_pso.rasterizationMode = OvRendering::Settings::ERasterizationMode::LINE;
 			}
-			else
-			{
-				const std::string pass = _GetCurrentPassName();
+			
+			const std::string pass = _GetCurrentPassName();
 
-				if (p_drawable.material->HasPass(pass))
-				{
-					p_drawable.pass = pass;
-				}
+			if (p_drawable.material->HasPass(pass))
+			{
+				p_drawable.pass = pass;
 			}
 		}
 	}
@@ -160,6 +158,7 @@ private:
 		case NORMAL: return "NORMAL_PASS";
 		case UV: return "UV_PASS";
 		case DEPTH: return "DEPTH_PASS";
+		case WIREFRAME: return "ALBEDO_PASS";
 		}
 
 		return {};
