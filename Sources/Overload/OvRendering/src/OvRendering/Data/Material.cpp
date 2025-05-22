@@ -418,7 +418,6 @@ const OvRendering::Data::StateMask OvRendering::Data::Material::GenerateStateMas
 	stateMask.colorWriting = m_colorWriting;
 	stateMask.blendable = m_blendable;
 	stateMask.depthTest = m_depthTest;
-	stateMask.userInterface = m_userInterface;
 	stateMask.frontfaceCulling = m_frontfaceCulling;
 	stateMask.backfaceCulling = m_backfaceCulling;
 	return stateMask;
@@ -432,6 +431,11 @@ OvRendering::Data::Material::PropertyMap& OvRendering::Data::Material::GetProper
 OvRendering::Data::FeatureSet& OvRendering::Data::Material::GetFeatures()
 {
 	return m_features;
+}
+
+void OvRendering::Data::Material::SetFeatures(const Data::FeatureSet& p_features)
+{
+	m_features = p_features;
 }
 
 void OvRendering::Data::Material::AddFeature(const std::string& p_feature)
