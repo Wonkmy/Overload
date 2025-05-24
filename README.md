@@ -1,4 +1,4 @@
-![Overload Logo](https://user-images.githubusercontent.com/33324216/94352497-cc8c2200-0033-11eb-93e1-1a30386133b9.png)
+![overload-banner-2](https://github.com/user-attachments/assets/feef5188-582c-4812-bb80-b893026811ee)
 
 <p align="center">
   <a href="https://github.com/Overload-Technologies/Overload/releases">Releases</a> |
@@ -51,6 +51,19 @@ Overload pillars are:
 
 Check out our [issues](https://github.com/Overload-Technologies/Overload/issues) and [pull requests](https://github.com/Overload-Technologies/Overload/pulls) to learn more about what's coming next!
 
+# Quick Start (TL;DR)
+*Assuming you are on Windows, have Visual Studio 2022 installed, and have about 5 minutes to spare!*
+1. Clone Overload
+2. Inside of the repository folder, run `OpenInVisualStudio.bat`
+3. Build the project, voilà!
+
+- **⭐ Bonus:** get one of Overload's [sample projects](https://github.com/Overload-Technologies/Overload/wiki/Sample-Projects)!
+- **✨ Extra Bonus:** check-out the [documentation](https://github.com/Overload-Technologies/Overload/wiki).
+
+More in-depth guide on getting started available [here](#getting-started).
+
+In a rush? [Get the latest release](https://github.com/Overload-Technologies/Overload/releases)!
+
 # Architecture
 Overload is divided into 11 modules: 9 libraries (SDK), and 2 executables (Applications).
 
@@ -72,11 +85,11 @@ Overload applications use the Overload SDK to operate.
 - `OvGame`: A data-driven executable for any game built with Overload.
 - `OvEditor`: An editor for building your game.
 
-![Editor](https://user-images.githubusercontent.com/33324216/94352908-fd228a80-0038-11eb-849a-c076bde4c7c6.PNG)
+![image](https://github.com/user-attachments/assets/3e59ee31-f124-453e-a7e6-2afd79be0e0d)
 
 ## Dependencies
 Overload depends on a few third-party libraries:
-- OpenGL with [GLAD](https://github.com/Dav1dde/glad) (Graphics API)
+- [GLAD](https://github.com/Dav1dde/glad) (OpengGL Graphics API)
 - [GLFW](https://github.com/glfw/glfw) (Windowing and inputs)
 - [Assimp](https://github.com/assimp/assimp) (3D model loader)
 - [Bullet3](https://github.com/bulletphysics/bullet3) (Physics)
@@ -145,11 +158,10 @@ If you'd like to contribute, please refer to our [contribution guildelines](http
 | **CPU** | x64 |
 
 # Screenshots
-![PBR Shading](https://user-images.githubusercontent.com/33324216/94352806-96e93800-0037-11eb-8d7f-9c9a318ca2c7.PNG)
-![Material Editor](https://user-images.githubusercontent.com/33324216/94352805-96e93800-0037-11eb-883b-fdd8818b93a6.PNG)
-![Standard Shader Library](https://user-images.githubusercontent.com/33324216/94352810-9781ce80-0037-11eb-8788-095794711b2c.PNG)
-![Custom Shaders](https://user-images.githubusercontent.com/33324216/94352802-9650a180-0037-11eb-8931-c6b2163c0ef1.PNG)
-![Realtime Lighting](https://user-images.githubusercontent.com/33324216/94352808-9781ce80-0037-11eb-8b91-3ec0ab06db45.PNG)
-![Scene Edition](https://user-images.githubusercontent.com/33324216/94352809-9781ce80-0037-11eb-9adf-d216eb4d963e.PNG)
-![Build System](https://user-images.githubusercontent.com/33324216/94352926-5db1c780-0039-11eb-88ef-7ca14a8bc821.PNG)
-![Project Hub](https://user-images.githubusercontent.com/33324216/94352807-9781ce80-0037-11eb-911b-7e3d0d00ce41.png)
+![editor](https://github.com/user-attachments/assets/2134f35f-a7f8-4bd6-8f4f-7d4761206cbf)
+![custom-shaders](https://github.com/user-attachments/assets/8cfed591-a565-45d2-aa4c-8e3926bdeea6)
+![shading](https://github.com/user-attachments/assets/e5219043-eb7f-4859-8345-a61fef9abf93)
+![materials](https://github.com/user-attachments/assets/c16f1bfc-7d6a-4610-a5fe-062761513ad6)
+![intel-sponza](https://github.com/user-attachments/assets/325fb0b5-54fc-4110-9011-5a51edcebf72)
+![intel-sponza-2](https://github.com/user-attachments/assets/87acd196-09aa-4399-af71-f7ac6d1ee34f)
+![intel-sponza-3](https://github.com/user-attachments/assets/28a8c112-d723-4e02-b790-a0b023dbc5c6)
