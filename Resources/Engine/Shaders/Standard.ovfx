@@ -1,4 +1,5 @@
 #pass SHADOW_PASS
+#pass REFLECTION_PASS
 
 #feature PARALLAX_MAPPING
 #feature NORMAL_MAPPING
@@ -47,6 +48,13 @@ void main()
 
 #shader fragment
 #version 450 core
+
+#if defined(REFLECTION_PASS)
+// Disable IBL for the reflection capture pass, otherwise reflective objects will
+// bounce infinitely, causing some artifacts. This define must be set before the PBR
+// shader is included, so it must be defined here.
+#define DISABLE_IMAGE_BASED_LIGHTING
+#endif
 
 #include ":Shaders/Common/Buffers/EngineUBO.ovfxh"
 #include ":Shaders/Lighting/PBR.ovfxh"
@@ -115,6 +123,7 @@ uniform bool u_BuiltInGammaCorrection = false;
 
 uniform sampler2D _ShadowMap;
 uniform mat4 _LightSpaceMatrix;
+uniform samplerCube _EnvironmentMap;
 
 out vec4 FRAGMENT_COLOR;
 
@@ -186,7 +195,8 @@ void main()
         ubo_ViewPos,
         fs_in.FragPos,
         _ShadowMap,
-        _LightSpaceMatrix
+        _LightSpaceMatrix,
+        _EnvironmentMap
     );
 
     // Simple built-in tonemapping (Reinhard) and gamma correction for elements

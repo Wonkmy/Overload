@@ -11,6 +11,8 @@
 #include <optional>
 #include <variant>
 
+#include <OvMaths/FMatrix3.h>
+
 #include <OvRendering/Data/StateMask.h>
 #include <OvRendering/HAL/TextureHandle.h>
 #include <OvRendering/Resources/Shader.h>
@@ -27,6 +29,7 @@ namespace OvRendering::Data
 		OvMaths::FVector2,
 		OvMaths::FVector3,
 		OvMaths::FVector4,
+		OvMaths::FMatrix3,
 		OvMaths::FMatrix4,
 		OvRendering::HAL::TextureHandle*,	// Texture handle
 		OvRendering::Resources::Texture*	// Texture asset (serializable)
@@ -78,12 +81,14 @@ namespace OvRendering::Data
 
 		/**
 		* Bind the material and send its uniform data to the GPU
-		* @param p_emptyTexture (The texture to use if a texture uniform is null)
+		* @param p_emptyTexture2D (The texture to use if a texture uniform is null)
+		* @param p_emptyTextureCube (The texture to use if a texture uniform is null)
 		* @param p_pass
 		* @param p_featureSetOverride
 		*/
 		void Bind(
-			HAL::Texture* p_emptyTexture = nullptr,
+			HAL::Texture* p_emptyTexture2D = nullptr,
+			HAL::Texture* p_emptyTextureCube = nullptr,
 			std::optional<const std::string_view> p_pass = std::nullopt,
 			OvTools::Utils::OptRef<const Data::FeatureSet> p_featureSetOverride = std::nullopt
 		);
@@ -210,6 +215,18 @@ namespace OvRendering::Data
 		void SetReceiveShadows(bool p_receiveShadows);
 
 		/**
+		* Sets whether this material should be captured by reflection probes
+		* @param p_capturedByReflectionProbes
+		*/
+		void SetCapturedByReflectionProbes(bool p_capturedByReflectionProbes);
+
+		/**
+		* Sets whether this material should receive reflections from reflection probes
+		* @param p_receiveReflections
+		*/
+		void SetReceiveReflections(bool p_receiveReflections);
+
+		/**
 		* Defines the number of instances
 		* @param p_instances
 		*/
@@ -264,6 +281,16 @@ namespace OvRendering::Data
 		* Returns true if the material is set to receive shadows
 		*/
 		bool IsShadowReceiver() const;
+
+		/**
+		* Returns true if the material is set to be captured by reflection probes
+		*/
+		bool IsCapturedByReflectionProbes() const;
+
+		/**
+		* Returns true if the material is set to receive reflections
+		*/
+		bool IsReflectionReceiver() const;
 
 		/**
 		* Returns the number of instances
@@ -344,16 +371,19 @@ namespace OvRendering::Data
 
 		bool m_supportOrthographic = true;
 		bool m_supportPerspective = true;
-
 		bool m_userInterface = false;
+
 		bool m_blendable = false;
 		bool m_backfaceCulling = true;
 		bool m_frontfaceCulling = false;
 		bool m_depthTest = true;
 		bool m_depthWriting = true;
 		bool m_colorWriting = true;
-		bool m_castShadows = false;
-		bool m_receiveShadows = false;
+
+		bool m_castShadows = true;
+		bool m_receiveShadows = true;
+		bool m_capturedByReflectionProbes = true;
+		bool m_receiveReflections = true;
 
 		int m_gpuInstances = 1;
 		int m_drawOrder = 1000;

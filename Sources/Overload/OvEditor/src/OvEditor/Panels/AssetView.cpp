@@ -4,20 +4,18 @@
 * @licence: MIT
 */
 
-#include <OvRendering/Features/FrameInfoRenderFeature.h>
 
-#include <OvTools/Utils/PathParser.h>
-
-#include <OvUI/Plugins/DDTarget.h>
-
-#include <OvCore/ECS/Components/CDirectionalLight.h>
 #include <OvCore/ECS/Components/CAmbientSphereLight.h>
+#include <OvCore/ECS/Components/CDirectionalLight.h>
+#include <OvCore/ECS/Components/CReflectionProbe.h>
 #include <OvCore/Rendering/SceneRenderer.h>
-
-#include "OvEditor/Core/EditorActions.h"
-#include "OvEditor/Panels/AssetView.h"
-#include "OvEditor/Rendering/GridRenderPass.h"
-#include "OvEditor/Rendering/DebugModelRenderFeature.h"
+#include <OvEditor/Core/EditorActions.h>
+#include <OvEditor/Panels/AssetView.h>
+#include <OvEditor/Rendering/GridRenderPass.h>
+#include <OvEditor/Rendering/DebugModelRenderFeature.h>
+#include <OvRendering/Features/FrameInfoRenderFeature.h>
+#include <OvTools/Utils/PathParser.h>
+#include <OvUI/Plugins/DDTarget.h>
 
 OvEditor::Panels::AssetView::AssetView
 (
@@ -26,11 +24,16 @@ OvEditor::Panels::AssetView::AssetView
 	const OvUI::Settings::PanelWindowSettings& p_windowSettings
 ) : AViewControllable(p_title, p_opened, p_windowSettings)
 {
+	using namespace OvRendering::Features;
+	using namespace OvEditor::Rendering;
+	using namespace OvRendering::Settings;
+	using enum OvRendering::Features::EFeatureExecutionPolicy;
+
 	m_renderer = std::make_unique<OvCore::Rendering::SceneRenderer>(*EDITOR_CONTEXT(driver));
 
-	m_renderer->AddFeature<OvEditor::Rendering::DebugModelRenderFeature>();
-	m_renderer->AddFeature<OvRendering::Features::DebugShapeRenderFeature>();
-	m_renderer->AddFeature<OvRendering::Features::FrameInfoRenderFeature>();
+	m_renderer->AddFeature<DebugModelRenderFeature, NEVER>();
+	m_renderer->AddFeature<DebugShapeRenderFeature, NEVER>();
+	m_renderer->AddFeature<FrameInfoRenderFeature, ALWAYS>();
 
 	m_renderer->AddPass<OvEditor::Rendering::GridRenderPass>("Grid", OvRendering::Settings::ERenderPassOrder::Debug);
 
@@ -39,11 +42,13 @@ OvEditor::Panels::AssetView::AssetView
 	m_scene.AddDefaultLights();
 	m_scene.AddDefaultPostProcessStack();
 	m_scene.AddDefaultAtmosphere();
+	m_scene.AddDefaultReflections();
 
 	m_assetActor = &m_scene.CreateActor("Asset");
 	m_modelRenderer = &m_assetActor->AddComponent<OvCore::ECS::Components::CModelRenderer>();
 	m_modelRenderer->SetFrustumBehaviour(OvCore::ECS::Components::CModelRenderer::EFrustumBehaviour::DISABLED);
 	m_materialRenderer = &m_assetActor->AddComponent<OvCore::ECS::Components::CMaterialRenderer>();
+	m_materialRenderer->SetVisibilityFlags(OvCore::Rendering::EVisibilityFlags::GEOMETRY | OvCore::Rendering::EVisibilityFlags::SHADOW);
 
 	m_cameraController.LockTargetActor(*m_assetActor);
 	

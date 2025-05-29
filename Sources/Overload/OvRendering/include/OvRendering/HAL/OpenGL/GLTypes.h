@@ -24,6 +24,7 @@
 #include <OvRendering/Settings/ERenderingCapability.h>
 #include <OvRendering/Settings/EShaderType.h>
 #include <OvRendering/Settings/ETextureFilteringMode.h>
+#include <OvRendering/Settings/ETextureType.h>
 #include <OvRendering/Settings/ETextureWrapMode.h>
 #include <OvRendering/Settings/EUniformType.h>
 #include <OvRendering/Settings/EPixelDataFormat.h>
@@ -314,6 +315,7 @@ struct OvTools::Utils::MappingFor<OvRendering::Settings::EUniformType, GLenum>
 		EnumValuePair<EnumType::FLOAT_VEC2, GL_FLOAT_VEC2>,
 		EnumValuePair<EnumType::FLOAT_VEC3, GL_FLOAT_VEC3>,
 		EnumValuePair<EnumType::FLOAT_VEC4, GL_FLOAT_VEC4>,
+		EnumValuePair<EnumType::FLOAT_MAT3, GL_FLOAT_MAT3>,
 		EnumValuePair<EnumType::FLOAT_MAT4, GL_FLOAT_MAT4>,
 		EnumValuePair<EnumType::DOUBLE_MAT4, GL_DOUBLE_MAT4>,
 		EnumValuePair<EnumType::SAMPLER_2D, GL_SAMPLER_2D>,
@@ -441,5 +443,15 @@ struct OvTools::Utils::MappingFor<OvRendering::Settings::EBufferType, GLenum>
 		EnumValuePair<EnumType::INDEX, GL_ELEMENT_ARRAY_BUFFER>,
 		EnumValuePair<EnumType::UNIFORM, GL_UNIFORM_BUFFER>,
 		EnumValuePair<EnumType::SHADER_STORAGE, GL_SHADER_STORAGE_BUFFER>
+	>;
+};
+
+template <>
+struct OvTools::Utils::MappingFor<OvRendering::Settings::ETextureType, GLenum>
+{
+	using EnumType = OvRendering::Settings::ETextureType;
+	using type = std::tuple<
+		EnumValuePair<EnumType::TEXTURE_2D, GL_TEXTURE_2D>,
+		EnumValuePair<EnumType::TEXTURE_CUBE, GL_TEXTURE_CUBE_MAP>
 	>;
 };

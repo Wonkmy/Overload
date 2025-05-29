@@ -13,6 +13,7 @@
 #include <OvCore/ECS/Components/CPointLight.h>
 #include <OvCore/ECS/Components/CSpotLight.h>
 #include <OvCore/Rendering/EngineDrawableDescriptor.h>
+#include <OvCore/Rendering/ReflectionRenderFeature.h>
 
 #include <OvDebug/Assertion.h>
 
@@ -50,7 +51,7 @@ namespace
 	constexpr float kHoveredOutlineWidth = 2.5f;
 	constexpr float kSelectedOutlineWidth = 5.0f;
 
-	OvMaths::FMatrix4 CalculateCameraModelMatrix(OvCore::ECS::Actor& p_actor)
+	OvMaths::FMatrix4 CalculateUnscaledModelMatrix(OvCore::ECS::Actor& p_actor)
 	{
 		auto translation = FMatrix4::Translation(p_actor.transform.GetWorldPosition());
 		auto rotation = FQuaternion::ToMatrix4(p_actor.transform.GetWorldRotation());
@@ -155,7 +156,7 @@ protected:
 			if (actor.IsActive())
 			{
 				auto& model = *EDITOR_CONTEXT(editorResources)->GetModel("Camera");
-				auto modelMatrix = CalculateCameraModelMatrix(actor);
+				auto modelMatrix = CalculateUnscaledModelMatrix(actor);
 
 				m_renderer.GetFeature<OvEditor::Rendering::DebugModelRenderFeature>()
 					.DrawModelWithSingleMaterial(p_pso, model, m_cameraMaterial, modelMatrix);
@@ -171,6 +172,83 @@ protected:
 
 private:
 	OvCore::Resources::Material m_cameraMaterial;
+	std::unique_ptr<OvRendering::HAL::ShaderStorageBuffer> m_fakeLightsBuffer;
+};
+
+class DebugReflectionProbesRenderPass : public OvRendering::Core::ARenderPass
+{
+public:
+	DebugReflectionProbesRenderPass(OvRendering::Core::CompositeRenderer& p_renderer) : OvRendering::Core::ARenderPass(p_renderer)
+	{
+		m_fakeLightsBuffer = CreateDebugLightBuffer();
+
+		m_reflectiveMaterial.SetDepthTest(false);
+		m_reflectiveMaterial.SetShader(EDITOR_CONTEXT(shaderManager)[":Shaders\\Standard.ovfx"]);
+		m_reflectiveMaterial.SetProperty("u_Albedo", FVector4{ 1.0, 1.0f, 1.0f, 1.0f });
+		m_reflectiveMaterial.SetProperty("u_Metallic", 1.0f);
+		m_reflectiveMaterial.SetProperty("u_Roughness", 0.0f);
+		m_reflectiveMaterial.SetProperty("u_BuiltInGammaCorrection", true);
+		m_reflectiveMaterial.SetProperty("u_BuiltInToneMapping", true);
+	}
+
+protected:
+	virtual void Draw(OvRendering::Data::PipelineState p_pso) override
+	{
+		ZoneScoped;
+		TracyGpuZone("DebugReflectionProbesRenderPass");
+
+		using namespace OvRendering::Features;
+
+		const auto lightingRenderFeature = OvTools::Utils::OptRef<LightingRenderFeature>{
+			m_renderer.HasFeature<LightingRenderFeature>() ?
+			m_renderer.GetFeature<LightingRenderFeature>() :
+			OvTools::Utils::OptRef<LightingRenderFeature>{std::nullopt}
+		};
+
+		// Override the light buffer with fake lights
+		m_fakeLightsBuffer->Bind(
+			lightingRenderFeature ?
+			lightingRenderFeature->GetBufferBindingPoint() :
+			0
+		);
+
+		auto& sceneDescriptor = m_renderer.GetDescriptor<OvCore::Rendering::SceneRenderer::SceneDescriptor>();
+		auto& reflectionRenderFeature = m_renderer.GetFeature<OvCore::Rendering::ReflectionRenderFeature>();
+
+		for (auto reflectionProbe : sceneDescriptor.scene.GetFastAccessComponents().reflectionProbes)
+		{
+			auto& actor = reflectionProbe->owner;
+
+			if (actor.IsActive())
+			{
+				auto& model = *EDITOR_CONTEXT(editorResources)->GetModel("Sphere");
+				auto modelMatrix =
+					OvMaths::FMatrix4::Scale(
+						OvMaths::FMatrix4::Translate(
+							CalculateUnscaledModelMatrix(actor),
+							reflectionProbe->GetCapturePosition()
+						),
+						{ 0.5f, 0.5f, 0.5f }
+					);
+
+				reflectionRenderFeature.PrepareProbe(*reflectionProbe);
+				reflectionRenderFeature.SendProbeData(m_reflectiveMaterial, *reflectionProbe);
+				reflectionRenderFeature.BindProbe(*reflectionProbe);
+
+				m_renderer.GetFeature<OvEditor::Rendering::DebugModelRenderFeature>()
+					.DrawModelWithSingleMaterial(p_pso, model, m_reflectiveMaterial, modelMatrix);
+			}
+		}
+
+		if (lightingRenderFeature)
+		{
+			// Bind back the original light buffer
+			lightingRenderFeature->Bind();
+		}
+	}
+
+private:
+	OvCore::Resources::Material m_reflectiveMaterial;
 	std::unique_ptr<OvRendering::HAL::ShaderStorageBuffer> m_fakeLightsBuffer;
 };
 
@@ -298,11 +376,19 @@ protected:
 				}
 			}
 
-			/* Render camera component outline */
+			/* Render camera component frustum */
 			if (auto cameraComponent = p_actor.GetComponent<OvCore::ECS::Components::CCamera>(); cameraComponent)
 			{
-				auto model = CalculateCameraModelMatrix(p_actor);
 				DrawCameraFrustum(*cameraComponent);
+			}
+
+			/* Render camera component frustum */
+			if (auto reflectionProbeComponent = p_actor.GetComponent<OvCore::ECS::Components::CReflectionProbe>(); reflectionProbeComponent)
+			{
+				if (reflectionProbeComponent->GetInfluencePolicy() == OvCore::ECS::Components::CReflectionProbe::EInfluencePolicy::LOCAL)
+				{
+					DrawReflectionProbeInfluenceVolume(*reflectionProbeComponent);
+				}
 			}
 
 			/* Render the actor collider */
@@ -355,13 +441,12 @@ protected:
 		auto pso = m_renderer.CreatePipelineState();
 
 		// Convenient lambda to draw a frustum line
-		auto draw = [&](const FVector3& p_start, const FVector3& p_end, const float planeDistance)
-			{
-				auto offset = pos + forward * planeDistance;
-				auto start = offset + p_start;
-				auto end = offset + p_end;
-				m_debugShapeFeature.DrawLine(pso, start, end, kFrustumColor);
-			};
+		auto draw = [&](const FVector3& p_start, const FVector3& p_end, const float planeDistance) {
+			auto offset = pos + forward * planeDistance;
+			auto start = offset + p_start;
+			auto end = offset + p_end;
+			m_debugShapeFeature.DrawLine(pso, start, end, kFrustumColor, 1.0f, false);
+		};
 
 		// Draw near plane
 		draw(a, b, near);
@@ -467,6 +552,23 @@ protected:
 		}
 	}
 
+	void DrawReflectionProbeInfluenceVolume(OvCore::ECS::Components::CReflectionProbe& p_reflectionProbe)
+	{
+		auto pso = m_renderer.CreatePipelineState();
+		pso.depthTest = false;
+		const auto& size = p_reflectionProbe.GetInfluenceSize();
+		const auto position = p_reflectionProbe.owner.transform.GetWorldPosition();
+		m_debugShapeFeature.DrawBox(
+			pso,
+			position,
+			p_reflectionProbe.owner.transform.GetWorldRotation(),
+			size,
+			kDebugBoundsColor,
+			1.0f,
+			false
+		);
+	}
+
 	void DrawActorCollider(OvCore::ECS::Actor& p_actor)
 	{
 		using namespace OvCore::ECS::Components;
@@ -484,7 +586,8 @@ protected:
 				p_actor.transform.GetWorldRotation(),
 				boxColliderComponent->GetSize() * p_actor.transform.GetWorldScale(),
 				OvMaths::FVector3{ 0.f, 1.f, 0.f },
-				1.0f
+				1.0f,
+				false
 			);
 		}
 
@@ -500,7 +603,8 @@ protected:
 				p_actor.transform.GetWorldRotation(),
 				radius,
 				OvMaths::FVector3{ 0.f, 1.f, 0.f },
-				1.0f
+				1.0f,
+				false
 			);
 		}
 
@@ -518,7 +622,8 @@ protected:
 				radius,
 				height,
 				OvMaths::FVector3{ 0.f, 1.f, 0.f },
-				1.0f
+				1.0f,
+				false
 			);
 		}
 	}
@@ -536,7 +641,8 @@ protected:
 			data.transform->GetWorldRotation(),
 			data.CalculateEffectRange(),
 			kDebugBoundsColor,
-			1.0f
+			1.0f,
+			false
 		);
 	}
 
@@ -553,7 +659,8 @@ protected:
 			data.transform->GetWorldRotation(),
 			{ data.constant, data.linear, data.quadratic },
 			data.CalculateEffectRange(),
-			1.0f
+			1.0f,
+			false
 		);
 	}
 
@@ -570,7 +677,8 @@ protected:
 			p_ambientSphereLight.owner.transform.GetWorldRotation(),
 			data.constant,
 			kLightVolumeColor,
-			1.0f
+			1.0f,
+			false
 		);
 	}
 
@@ -578,59 +686,60 @@ protected:
 	{
 		using namespace OvCore::ECS::Components;
 		using namespace OvPhysics::Entities;
+		using enum OvCore::ECS::Components::CModelRenderer::EFrustumBehaviour;
 
 		auto pso = m_renderer.CreatePipelineState();
-		pso.depthTest = false;
 
-		/* Draw the sphere collider if any */
+		const auto frustumBehaviour = p_modelRenderer.GetFrustumBehaviour();
+		
+		if (frustumBehaviour == DISABLED)
+		{
+			return; // No bounds to draw
+		}
+
+		// Draw the mesh, model, or custom bounding sphere
 		if (auto model = p_modelRenderer.GetModel())
 		{
 			auto& actor = p_modelRenderer.owner;
 
-			OvMaths::FVector3 actorScale = actor.transform.GetWorldScale();
-			OvMaths::FQuaternion actorRotation = actor.transform.GetWorldRotation();
-			OvMaths::FVector3 actorPosition = actor.transform.GetWorldPosition();
+			const auto& actorScale = actor.transform.GetWorldScale();
+			const auto& actorRotation = actor.transform.GetWorldRotation();
+			const auto& actorPosition = actor.transform.GetWorldPosition();
 
-			const auto& modelBoundingsphere =
-				p_modelRenderer.GetFrustumBehaviour() == OvCore::ECS::Components::CModelRenderer::EFrustumBehaviour::CULL_CUSTOM ?
-				p_modelRenderer.GetCustomBoundingSphere() :
-				model->GetBoundingSphere();
+			const float radiusScale = std::max(std::max(std::max(actorScale.x, actorScale.y), actorScale.z), 0.0f);
 
-			float radiusScale = std::max(std::max(std::max(actorScale.x, actorScale.y), actorScale.z), 0.0f);
-			float scaledRadius = modelBoundingsphere.radius * radiusScale;
-			auto sphereOffset = OvMaths::FQuaternion::RotatePoint(modelBoundingsphere.position, actorRotation) * radiusScale;
+			auto drawBounds = [&](const OvRendering::Geometry::BoundingSphere& p_bounds) {
+				const float scaledRadius = p_bounds.radius * radiusScale;
+				const auto sphereOffset = OvMaths::FQuaternion::RotatePoint(
+					p_bounds.position,
+					actorRotation
+				) * radiusScale;
 
-			m_debugShapeFeature.DrawSphere(
-				pso,
-				actorPosition + sphereOffset,
-				actorRotation,
-				scaledRadius,
-				kDebugBoundsColor,
-				1.0f
-			);
+				m_debugShapeFeature.DrawSphere(
+					pso,
+					actorPosition + sphereOffset,
+					actorRotation,
+					scaledRadius,
+					kDebugBoundsColor,
+					1.0f,
+					false
+				);
+			};
 
-			if (p_modelRenderer.GetFrustumBehaviour() == OvCore::ECS::Components::CModelRenderer::EFrustumBehaviour::CULL_MESHES)
+			if (frustumBehaviour == MESH_BOUNDS)
 			{
-				const auto& meshes = model->GetMeshes();
-
-				if (meshes.size() > 1) // One mesh would result into the same bounding sphere for mesh and model
+				for (auto mesh : model->GetMeshes())
 				{
-					for (auto mesh : meshes)
-					{
-						auto& meshBoundingSphere = mesh->GetBoundingSphere();
-						float scaledRadius = meshBoundingSphere.radius * radiusScale;
-						auto sphereOffset = OvMaths::FQuaternion::RotatePoint(meshBoundingSphere.position, actorRotation) * radiusScale;
-
-						m_debugShapeFeature.DrawSphere(
-							pso,
-							actorPosition + sphereOffset,
-							actorRotation,
-							scaledRadius,
-							kDebugBoundsColor,
-							1.0f
-						);
-					}
+					drawBounds(mesh->GetBoundingSphere());
 				}
+			}
+			else
+			{
+				drawBounds(
+					frustumBehaviour == CUSTOM_BOUNDS ?
+					p_modelRenderer.GetCustomBoundingSphere() :
+					model->GetBoundingSphere()
+				);
 			}
 		}
 	}
@@ -639,15 +748,21 @@ protected:
 OvEditor::Rendering::DebugSceneRenderer::DebugSceneRenderer(OvRendering::Context::Driver& p_driver) :
 	OvCore::Rendering::SceneRenderer(p_driver, true /* enable stencil write, required by the grid */)
 {
-	AddFeature<OvRendering::Features::FrameInfoRenderFeature>();
-	AddFeature<OvRendering::Features::DebugShapeRenderFeature>();
-	AddFeature<OvEditor::Rendering::DebugModelRenderFeature>();
-	AddFeature<OvEditor::Rendering::OutlineRenderFeature>();
-	AddFeature<OvEditor::Rendering::GizmoRenderFeature>();
+	using namespace OvRendering::Features;
+	using namespace OvEditor::Rendering;
+	using namespace OvRendering::Settings;
+	using enum OvRendering::Features::EFeatureExecutionPolicy;
 
-	AddPass<GridRenderPass>("Grid", OvRendering::Settings::ERenderPassOrder::Debug);
-	AddPass<DebugCamerasRenderPass>("Debug Cameras", OvRendering::Settings::ERenderPassOrder::Debug);
-	AddPass<DebugLightsRenderPass>("Debug Lights", OvRendering::Settings::ERenderPassOrder::Debug);
-	AddPass<DebugActorRenderPass>("Debug Actor", OvRendering::Settings::ERenderPassOrder::Debug);
-	AddPass<PickingRenderPass>("Picking", OvRendering::Settings::ERenderPassOrder::Debug);
+	AddFeature<FrameInfoRenderFeature, ALWAYS>();
+	AddFeature<DebugShapeRenderFeature, FRAME_EVENTS_ONLY>();
+	AddFeature<DebugModelRenderFeature, NEVER>();
+	AddFeature<OutlineRenderFeature, NEVER>();
+	AddFeature<GizmoRenderFeature, NEVER>();
+
+	AddPass<GridRenderPass>("Grid", ERenderPassOrder::Debug);
+	AddPass<DebugCamerasRenderPass>("Debug Cameras", ERenderPassOrder::Debug);
+	AddPass<DebugReflectionProbesRenderPass>("Debug Reflection Probes", ERenderPassOrder::Debug);
+	AddPass<DebugLightsRenderPass>("Debug Lights", ERenderPassOrder::Debug);
+	AddPass<DebugActorRenderPass>("Debug Actor", ERenderPassOrder::Debug);
+	AddPass<PickingRenderPass>("Picking", ERenderPassOrder::Debug);
 }

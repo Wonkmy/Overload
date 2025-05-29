@@ -6,8 +6,9 @@
 
 #pragma once
 
-#include <span>
+#include <unordered_map>
 
+#include <OvMaths/FMatrix3.h>
 #include <OvMaths/FMatrix4.h>
 #include <OvMaths/FVector2.h>
 #include <OvMaths/FVector3.h>
@@ -29,6 +30,7 @@ namespace OvRendering::HAL
 		std::same_as<T, OvMaths::FVector2> ||
 		std::same_as<T, OvMaths::FVector3> ||
 		std::same_as<T, OvMaths::FVector4> ||
+		std::same_as<T, OvMaths::FMatrix3> ||
 		std::same_as<T, OvMaths::FMatrix4>;
 
 	/**
@@ -92,7 +94,7 @@ namespace OvRendering::HAL
 		* @param p_value
 		*/
 		template<SupportedUniformType T>
-		void SetUniform(std::string_view p_name, const T& p_value);
+		void SetUniform(const std::string& p_name, const T& p_value);
 
 		/**
 		* Returns the value of a uniform associated with the given name.
@@ -100,13 +102,13 @@ namespace OvRendering::HAL
 		* @param p_value
 		*/
 		template<SupportedUniformType T>
-		T GetUniform(std::string_view p_name);
+		T GetUniform(const std::string& p_name);
 
 		/**
 		* Returns information about the uniform identified by the given name or std::nullopt if not found.
 		* @param p_name
 		*/
-		OvTools::Utils::OptRef<const Settings::UniformInfo> GetUniformInfo(std::string_view p_name) const;
+		OvTools::Utils::OptRef<const Settings::UniformInfo> GetUniformInfo(const std::string& p_name) const;
 
 		/**
 		* Queries the uniforms from the program and caches them in memory.
@@ -116,7 +118,7 @@ namespace OvRendering::HAL
 		/**
 		* Returns the uniforms associated with this program.
 		*/
-		std::span<const Settings::UniformInfo> GetUniforms() const;
+		const std::unordered_map<std::string, Settings::UniformInfo>& GetUniforms() const;
 
 	private:
 		ProgramContext m_context;

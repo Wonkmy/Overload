@@ -9,16 +9,17 @@
 #include <map>
 
 #include <OvRendering/Core/CompositeRenderer.h>
-#include <OvRendering/Resources/Mesh.h>
 #include <OvRendering/Data/Frustum.h>
 #include <OvRendering/Entities/Drawable.h>
 #include <OvRendering/HAL/UniformBuffer.h>
 #include <OvRendering/HAL/ShaderStorageBuffer.h>
+#include <OvRendering/Resources/Mesh.h>
 
-#include "OvCore/Resources/Material.h"
-#include "OvCore/ECS/Actor.h"
-#include "OvCore/ECS/Components/CCamera.h"
-#include "OvCore/SceneSystem/Scene.h"
+#include <OvCore/ECS/Actor.h>
+#include <OvCore/ECS/Components/CCamera.h>
+#include <OvCore/Rendering/EVisibilityFlags.h>
+#include <OvCore/Resources/Material.h>
+#include <OvCore/SceneSystem/Scene.h>
 
 namespace OvCore::Rendering
 {
@@ -65,23 +66,63 @@ namespace OvCore::Rendering
 			}
 		};
 
-		using OpaqueDrawables = std::multimap<DrawOrder<EOrderingMode::FRONT_TO_BACK>, OvRendering::Entities::Drawable>;
-		using TransparentDrawables = std::multimap<DrawOrder<EOrderingMode::BACK_TO_FRONT>, OvRendering::Entities::Drawable>;
-		using UIDrawables = std::multimap<DrawOrder<EOrderingMode::BACK_TO_FRONT>, OvRendering::Entities::Drawable>;
+		template<EOrderingMode OrderingMode>
+		using DrawableMap = std::multimap<DrawOrder<OrderingMode>, OvRendering::Entities::Drawable>;
 
-		struct AllDrawables
-		{
-			OpaqueDrawables opaques;
-			TransparentDrawables transparents;
-			UIDrawables ui;
-		};
-
+		/**
+		* Input data for the scene renderer.
+		*/
 		struct SceneDescriptor
 		{
 			OvCore::SceneSystem::Scene& scene;
 			OvTools::Utils::OptRef<const OvRendering::Data::Frustum> frustumOverride;
 			OvTools::Utils::OptRef<OvRendering::Data::Material> overrideMaterial;
 			OvTools::Utils::OptRef<OvRendering::Data::Material> fallbackMaterial;
+		};
+
+		struct SceneParsingInput
+		{
+			OvCore::SceneSystem::Scene& scene;
+		};
+
+		/**
+		* Result of the scene parsing, containing the drawables to be rendered.
+		*/
+		struct SceneDrawablesDescriptor
+		{
+			std::vector<OvRendering::Entities::Drawable> drawables;
+		};
+
+		/**
+		* Additional information for a drawable computed by the scene renderer.
+		*/
+		struct SceneDrawableDescriptor
+		{
+			OvCore::ECS::Actor& actor;
+			EVisibilityFlags visibilityFlags = EVisibilityFlags::NONE;
+			std::optional<OvRendering::Geometry::BoundingSphere> bounds;
+		};
+
+		/**
+		* Filtered drawables for the scene, categorized by their render pass, and sorted by their draw order.
+		*/
+		struct SceneFilteredDrawablesDescriptor
+		{
+			DrawableMap<EOrderingMode::FRONT_TO_BACK> opaques;
+			DrawableMap<EOrderingMode::BACK_TO_FRONT> transparents;
+			DrawableMap<EOrderingMode::BACK_TO_FRONT> ui;
+		};
+
+		struct SceneDrawablesFilteringInput
+		{
+			const OvRendering::Entities::Camera& camera;
+			OvTools::Utils::OptRef<const OvRendering::Data::Frustum> frustumOverride;
+			OvTools::Utils::OptRef<OvRendering::Data::Material> overrideMaterial;
+			OvTools::Utils::OptRef<OvRendering::Data::Material> fallbackMaterial;
+			EVisibilityFlags requiredVisibilityFlags = EVisibilityFlags::NONE;
+			bool includeUI = true; // Whether to include UI drawables in the filtering
+			bool includeTransparent = true; // Whether to include transparent drawables in the filtering
+			bool includeOpaque = true; // Whether to include opaque drawables in the filtering
 		};
 
 		/**
@@ -111,7 +152,24 @@ namespace OvCore::Rendering
 			const OvMaths::FMatrix4& p_modelMatrix
 		);
 
-	protected:
-		AllDrawables ParseScene();
+		/**
+		* Parse the scene (as defined in the SceneDescriptor) to find the drawables to render.
+		* @param p_sceneDescriptor
+		* @param p_options
+		*/
+		SceneDrawablesDescriptor ParseScene(
+			const SceneParsingInput& p_input
+		);
+
+		/**
+		* Filter and prepare drawables based on the given context.
+		* This is where culling and sorting happens.
+		* @param p_drawables
+		* @param p_filteringInput
+		*/
+		SceneFilteredDrawablesDescriptor FilterDrawables(
+			const SceneDrawablesDescriptor& p_drawables,
+			const SceneDrawablesFilteringInput& p_filteringInput
+		);
 	};
 }

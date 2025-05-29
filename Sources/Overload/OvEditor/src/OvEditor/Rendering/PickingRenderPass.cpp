@@ -4,6 +4,8 @@
 * @licence: MIT
 */
 
+#include <ranges>
+
 #include <OvCore/ECS/Components/CMaterialRenderer.h>
 #include <OvCore/Rendering/EngineDrawableDescriptor.h>
 #include <OvCore/Rendering/FramebufferUtil.h>
@@ -19,8 +21,8 @@
 namespace
 {
 	void PreparePickingMaterial(
-		OvCore::ECS::Actor& p_actor,
-		OvCore::Resources::Material& p_material,
+		const OvCore::ECS::Actor& p_actor,
+		OvRendering::Data::Material& p_material,
 		const std::string& p_uniformName = "_PickingColor"
 	)
 	{
@@ -55,6 +57,9 @@ OvEditor::Rendering::PickingRenderPass::PickingRenderPass(OvRendering::Core::Com
 	m_gizmoPickingMaterial.SetProperty("u_IsBall", false);
 	m_gizmoPickingMaterial.SetProperty("u_IsPickable", true);
 	m_gizmoPickingMaterial.SetDepthTest(true);
+
+	m_reflectionProbeMaterial.SetShader(EDITOR_CONTEXT(editorResources)->GetShader("PickingFallback"));
+	m_reflectionProbeMaterial.SetDepthTest(false);
 
 	/* Picking Material */
 	m_actorPickingFallbackMaterial.SetShader(EDITOR_CONTEXT(editorResources)->GetShader("PickingFallback"));
@@ -121,6 +126,7 @@ void OvEditor::Rendering::PickingRenderPass::Draw(OvRendering::Data::PipelineSta
 
 	DrawPickableModels(pso, scene);
 	DrawPickableCameras(pso, scene);
+	DrawPickableReflectionProbes(pso, scene);
 	DrawPickableLights(pso, scene);
 
 	// Clear depth, gizmos are rendered on top of everything else
@@ -151,57 +157,43 @@ void OvEditor::Rendering::PickingRenderPass::DrawPickableModels(
 	OvCore::SceneSystem::Scene& p_scene
 )
 {
-	for (auto modelRenderer : p_scene.GetFastAccessComponents().modelRenderers)
-	{
-		auto& actor = modelRenderer->owner;
+	const auto& filteredDrawables = m_renderer.GetDescriptor<OvCore::Rendering::SceneRenderer::SceneFilteredDrawablesDescriptor>();
 
-		if (actor.IsActive())
+	auto drawPickableModels = [&](auto drawables) {
+		for (auto& drawable : drawables)
 		{
-			if (auto model = modelRenderer->GetModel())
-			{
-				if (auto materialRenderer = modelRenderer->owner.GetComponent<OvCore::ECS::Components::CMaterialRenderer>())
-				{
-					const auto& materials = materialRenderer->GetMaterials();
-					const auto& modelMatrix = actor.transform.GetWorldMatrix();
+			const std::string pickingPassName = "PICKING_PASS";
 
-					for (auto mesh : model->GetMeshes())
-					{
-						const std::string pickingPassName = "PICKING_PASS";
+			// If the material has picking pass, use it, otherwise use the picking fallback material
+			auto& targetMaterial =
+				(drawable.material && drawable.material->IsValid() && drawable.material->HasPass(pickingPassName)) ?
+				drawable.material.value() :
+				m_actorPickingFallbackMaterial;
 
-						auto customMaterial = materials.at(mesh->GetMaterialIndex());
+			const auto& actor = drawable.GetDescriptor<OvCore::Rendering::SceneRenderer::SceneDrawableDescriptor>().actor;
 
-						// If the material has picking pass, use it, otherwise use the picking fallback material
-						auto& targetMaterial =
-							(customMaterial && customMaterial->IsValid() && customMaterial->HasPass(pickingPassName)) ?
-							*customMaterial :
-							m_actorPickingFallbackMaterial;
+			PreparePickingMaterial(actor, targetMaterial);
 
-						PreparePickingMaterial(actor, targetMaterial);
+			// Prioritize using the actual material state mask.
+			auto stateMask = 
+				drawable.material && drawable.material->IsValid() ?
+				drawable.material->GenerateStateMask() :
+				targetMaterial.GenerateStateMask();
 
-						// Prioritize using the actual material state mask.
-						auto stateMask =
-							customMaterial && customMaterial->IsValid() ?
-							customMaterial->GenerateStateMask() :
-							targetMaterial.GenerateStateMask();
+			OvRendering::Entities::Drawable finalDrawable = drawable;
+			finalDrawable.material = targetMaterial;
+			finalDrawable.stateMask = stateMask;
+			finalDrawable.stateMask.frontfaceCulling = false;
+			finalDrawable.stateMask.backfaceCulling = false;
+			finalDrawable.pass = pickingPassName;
 
-						OvRendering::Entities::Drawable drawable;
-						drawable.mesh = *mesh;
-						drawable.material = targetMaterial;
-						drawable.stateMask = stateMask;
-						drawable.stateMask.frontfaceCulling = false;
-						drawable.stateMask.backfaceCulling = false;
-						drawable.pass = pickingPassName;
-
-						drawable.AddDescriptor<OvCore::Rendering::EngineDrawableDescriptor>({
-							modelMatrix
-						});
-
-						m_renderer.DrawEntity(p_pso, drawable);
-					}
-				}
-			}
+			m_renderer.DrawEntity(p_pso, finalDrawable);
 		}
-	}
+	};
+
+	drawPickableModels(filteredDrawables.opaques | std::views::values);
+	drawPickableModels(filteredDrawables.transparents | std::views::values);
+	drawPickableModels(filteredDrawables.ui | std::views::values);
 }
 
 void OvEditor::Rendering::PickingRenderPass::DrawPickableCameras(
@@ -223,6 +215,30 @@ void OvEditor::Rendering::PickingRenderPass::DrawPickableCameras(
 
 			m_renderer.GetFeature<DebugModelRenderFeature>()
 				.DrawModelWithSingleMaterial(p_pso, cameraModel, m_actorPickingFallbackMaterial, modelMatrix);
+		}
+	}
+}
+
+void OvEditor::Rendering::PickingRenderPass::DrawPickableReflectionProbes(OvRendering::Data::PipelineState p_pso, OvCore::SceneSystem::Scene& p_scene)
+{
+	for (auto reflectionProbe : p_scene.GetFastAccessComponents().reflectionProbes)
+	{
+		auto& actor = reflectionProbe->owner;
+
+		if (actor.IsActive())
+		{
+			PreparePickingMaterial(actor, m_reflectionProbeMaterial);
+			auto& reflectionProbeModel = *EDITOR_CONTEXT(editorResources)->GetModel("Sphere");
+			const auto translation = OvMaths::FMatrix4::Translation(
+				actor.transform.GetWorldPosition() +
+				reflectionProbe->GetCapturePosition()
+			);
+			const auto rotation = OvMaths::FQuaternion::ToMatrix4(actor.transform.GetWorldRotation());
+			const auto scaling = OvMaths::FMatrix4::Scaling({ 0.5f, 0.5f, 0.5f });
+			auto modelMatrix = translation * rotation * scaling;
+
+			m_renderer.GetFeature<DebugModelRenderFeature>()
+				.DrawModelWithSingleMaterial(p_pso, reflectionProbeModel, m_reflectionProbeMaterial, modelMatrix);
 		}
 	}
 }

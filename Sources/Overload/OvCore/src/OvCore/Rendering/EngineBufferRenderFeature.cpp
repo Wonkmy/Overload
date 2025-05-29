@@ -4,10 +4,11 @@
 * @licence: MIT
 */
 
-#include <OvRendering/Core/CompositeRenderer.h>
+#include <tracy/Tracy.hpp>
 
-#include "OvCore/Rendering/EngineBufferRenderFeature.h"
-#include "OvCore/Rendering/EngineDrawableDescriptor.h"
+#include <OvCore/Rendering/EngineBufferRenderFeature.h>
+#include <OvCore/Rendering/EngineDrawableDescriptor.h>
+#include <OvRendering/Core/CompositeRenderer.h>
 
 namespace
 {
@@ -20,8 +21,11 @@ namespace
 		sizeof(OvMaths::FMatrix4);	// User matrix
 }
 
-OvCore::Rendering::EngineBufferRenderFeature::EngineBufferRenderFeature(OvRendering::Core::CompositeRenderer& p_renderer)
-	: ARenderFeature(p_renderer)
+OvCore::Rendering::EngineBufferRenderFeature::EngineBufferRenderFeature(
+	OvRendering::Core::CompositeRenderer& p_renderer,
+	OvRendering::Features::EFeatureExecutionPolicy p_executionPolicy
+) : 
+	ARenderFeature(p_renderer, p_executionPolicy)
 {
 	m_engineBuffer = std::make_unique<OvRendering::HAL::UniformBuffer>();
 	m_engineBuffer->Allocate(kUBOSize, OvRendering::Settings::EAccessSpecifier::STREAM_DRAW);
@@ -82,6 +86,8 @@ void OvCore::Rendering::EngineBufferRenderFeature::OnEndFrame()
 
 void OvCore::Rendering::EngineBufferRenderFeature::OnBeforeDraw(OvRendering::Data::PipelineState& p_pso, const OvRendering::Entities::Drawable& p_drawable)
 {
+	ZoneScoped;
+
 	OvTools::Utils::OptRef<const EngineDrawableDescriptor> descriptor;
 
 	if (p_drawable.TryGetDescriptor<EngineDrawableDescriptor>(descriptor))
