@@ -13,6 +13,7 @@
 
 #include <OvRendering/Data/FeatureSet.h>
 #include <OvRendering/HAL/ShaderProgram.h>
+#include <OvTools/Eventing/Event.h>
 
 namespace OvRendering::Resources
 {
@@ -77,6 +78,7 @@ namespace OvRendering::Resources
 
 	public:
 		const std::string path;
+		OvTools::Eventing::Event<> VariantsChangedEvent;
 
 	private:
 		std::unordered_set<std::string> m_passes;

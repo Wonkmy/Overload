@@ -167,7 +167,17 @@ void OvEditor::Panels::MaterialEditor::Refresh()
 
 void OvEditor::Panels::MaterialEditor::SetTarget(OvCore::Resources::Material & p_newTarget)
 {
+	if (m_target && m_shaderStructureChangedListener)
+	{
+		m_target->ShaderStructureChangedEvent.RemoveListener(m_shaderStructureChangedListener.value());
+	}
+
 	m_target = &p_newTarget;
+
+	m_shaderStructureChangedListener = m_target
+		->ShaderStructureChangedEvent
+		.AddListener(std::bind(&MaterialEditor::OnShaderDropped, this));
+
 	m_targetMaterialText->content = m_target->path;
 	OnMaterialDropped();
 }

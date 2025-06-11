@@ -74,6 +74,8 @@ void OvRendering::Resources::Shader::SetVariants(Variants&& p_variants)
 			m_features.insert(featureSet.begin(), featureSet.end());
 		}
 	}
+	
+	VariantsChangedEvent.Invoke();
 }
 
 const OvRendering::Resources::Shader::Variants& OvRendering::Resources::Shader::GetVariants() const

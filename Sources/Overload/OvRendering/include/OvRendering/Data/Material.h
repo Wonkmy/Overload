@@ -364,8 +364,16 @@ namespace OvRendering::Data
 		*/
 		bool SupportsProjectionMode(OvRendering::Settings::EProjectionMode p_projectionMode) const;
 
+	private:
+		void OnShaderVariantsChanged();
+
+	public:
+		// Invoked when the shader itself is changed, or its variants are changed
+		OvTools::Eventing::Event<> ShaderStructureChangedEvent;
+
 	protected:
 		OvRendering::Resources::Shader* m_shader = nullptr;
+		std::optional<OvTools::Eventing::ListenerID> m_shaderVariantsChangedListener;
 		PropertyMap m_properties;
 		Data::FeatureSet m_features;
 

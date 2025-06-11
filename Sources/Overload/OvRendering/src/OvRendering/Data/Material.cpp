@@ -70,16 +70,27 @@ OvRendering::Data::Material::Material(OvRendering::Resources::Shader* p_shader)
 
 void OvRendering::Data::Material::SetShader(OvRendering::Resources::Shader* p_shader)
 {
+	if (m_shader && m_shaderVariantsChangedListener)
+	{
+		m_shader->VariantsChangedEvent.RemoveListener(m_shaderVariantsChangedListener.value());
+	}
+
 	m_shader = p_shader;
 
 	if (m_shader)
 	{
+		m_shaderVariantsChangedListener = m_shader
+			->VariantsChangedEvent
+			.AddListener(std::bind(&Material::OnShaderVariantsChanged, this));
+
 		FillUniform();
 	}
 	else
 	{
 		m_properties.clear();
 	}
+
+	ShaderStructureChangedEvent.Invoke();
 }
 
 OvTools::Utils::OptRef<OvRendering::HAL::ShaderProgram> OvRendering::Data::Material::GetVariant(
@@ -490,4 +501,9 @@ bool OvRendering::Data::Material::SupportsProjectionMode(OvRendering::Settings::
 	}
 
 	return true;
+}
+
+void OvRendering::Data::Material::OnShaderVariantsChanged()
+{
+	ShaderStructureChangedEvent.Invoke();
 }

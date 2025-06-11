@@ -87,6 +87,7 @@ namespace OvEditor::Panels
 
 		OvTools::Eventing::Event<> m_materialDroppedEvent;
 		OvTools::Eventing::Event<> m_shaderDroppedEvent;
+		std::optional<OvTools::Eventing::ListenerID> m_shaderStructureChangedListener;
 
 		OvUI::Widgets::Layout::Group* m_settings = nullptr;
 		OvUI::Widgets::Layout::Group* m_materialPipelineState = nullptr;
