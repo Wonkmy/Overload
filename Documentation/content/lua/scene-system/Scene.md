@@ -1,7 +1,11 @@
++++
+title = 'Scene'
++++
+
 ### Description
 Set of actors
 
-- C++ related class: [`OvCore::SceneSystem::Scene`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/SceneSystem/Scene.h)
+- C++ related class: [`OvCore::SceneSystem::Scene`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/SceneSystem/Scene.h)
 
 ### Variables
 _This usertype has no variables_

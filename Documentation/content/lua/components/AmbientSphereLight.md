@@ -1,8 +1,12 @@
++++
+title = 'AmbientSphereLight'
++++
+
 ### Description
 Represents an ambient light with a sphere shape
 
-- C++ related class: [`OvCore::ECS::Components::CAmbientSphereLight`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CAmbientSphereLight.h)
-- Inherits from lua usertype: [`Light`](Light)
+- C++ related class: [`OvCore::ECS::Components::CAmbientSphereLight`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CAmbientSphereLight.h)
+- Inherits from lua usertype: [`Light`](../Light)
 
 ### Variables
 _This usertype has no variables_

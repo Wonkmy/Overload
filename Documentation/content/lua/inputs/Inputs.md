@@ -1,11 +1,9 @@
++++
+title = 'Inputs (table)'
++++
+
 ### Description
-Some global inputs functions
-
-### Variables
-_This usertype has no variables_
-
-### Constructors
-_This usertype has no constructors_
+Global table containing input-related functions
 
 ### Functions
 |Name|Input|Output|Description|
@@ -22,4 +20,35 @@ _This usertype has no constructors_
 |UnlockMouse|||Unlocks and shows the mouse cursor|
 
 ### Operators
-_This usertype has no operators_
+```lua
+function MyScript::OnUpdate()
+    -- Check if a key has been pressed this frame
+    if Inputs.GetKeyDown(Key.SPACE):
+        Debug.Log("Space pressed this frame!")
+    end
+
+    local movementDirection = Vector2.new(0, 0)
+
+    -- Check if W (move up) is being pressed
+    if Inputs.GetKey(Key.W):
+        movementDirection.y = movementDirection.y + 1
+    end
+
+    -- Check if S (move down) is being pressed
+    if Inputs.GetKey(Key.S):
+        movementDirection.y = movementDirection.y - 1
+    end
+
+    -- Check if D (move right) is being pressed
+    if Inputs.GetKey(Key.D):
+        movementDirection.x = movementDirection.x + 1
+    end
+
+    -- Check if A (move left) is being pressed
+    if Inputs.GetKey(Key.A):
+        movementDirection.x = movementDirection.x - 1
+    end
+
+    Debug.Log("Movement Direction: " .. movementDirection)
+end
+```

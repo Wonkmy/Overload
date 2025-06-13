@@ -1,8 +1,12 @@
++++
+title = 'AudioSource'
++++
+
 ### Description
 Represents an audio source. Its position in the world is important if the spatial sound settings is on
 
-- C++ related class: [`OvCore::ECS::Components::CAudioSource`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CAudioSource.h)
-- Inherits from lua usertype: [`Component`](Component)
+- C++ related class: [`OvCore::ECS::Components::CAudioSource`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CAudioSource.h)
+- Inherits from lua usertype: [`Component`](../Component)
 
 ### Variables
 _This usertype has no variables_

@@ -1,8 +1,12 @@
++++
+title = 'PhysicalObject'
++++
+
 ### Description
 Base class for any entity that is physical
 
-- C++ related class: [`OvCore::ECS::Components::CPhysicalObject`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CPhysicalObject.h)
-- Inherits from lua usertype: [`Component`](Component)
+- C++ related class: [`OvCore::ECS::Components::CPhysicalObject`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CPhysicalObject.h)
+- Inherits from lua usertype: [`Component`](../Component)
 - Inherited by lua usertypes:
     - [`PhysicalBox`](PhysicalBox)
     - [`PhysicalSphere`](PhysicalSphere)

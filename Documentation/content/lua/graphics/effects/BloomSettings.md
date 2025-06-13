@@ -1,7 +1,11 @@
++++
+title = 'BloomSettings'
++++
+
 ### Description
 Contains all the settings for the bloom effect.
 
-- C++ related class: [`OvCore::Rendering::PostProcess::BloomEffect`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/Rendering/PostProcess/BloomEffect.h)
+- C++ related class: [`OvCore::Rendering::PostProcess::BloomEffect`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/Rendering/PostProcess/BloomEffect.h)
 - Inherits from lua usertype: [`EffectSettings`](EffectSettings)
 
 ### Variables

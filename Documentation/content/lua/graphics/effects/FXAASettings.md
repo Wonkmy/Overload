@@ -1,7 +1,11 @@
++++
+title = 'FXAASettings'
++++
+
 ### Description
 Contains all the settings for the FXAA effect.
 
-- C++ related class: [`OvCore::Rendering::PostProcess::FXAASettings`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/Rendering/PostProcess/FXAAEffect.h)
+- C++ related class: [`OvCore::Rendering::PostProcess::FXAASettings`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/Rendering/PostProcess/FXAAEffect.h)
 - Inherits from lua usertype: [`EffectSettings`](EffectSettings)
 
 ### Variables

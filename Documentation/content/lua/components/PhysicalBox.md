@@ -1,8 +1,12 @@
++++
+title = 'PhysicalBox'
++++
+
 ### Description
 PhysicalObject with a box shape
 
-- C++ related class: [`OvCore::ECS::Components::CPhysicalBox`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CPhysicalBox.h)
-- Inherits from lua usertype: [`PhysicalObject`](PhysicalObject)
+- C++ related class: [`OvCore::ECS::Components::CPhysicalBox`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CPhysicalBox.h)
+- Inherits from lua usertype: [`PhysicalObject`](../PhysicalObject)
 
 ### Variables
 _This usertype has no variables_

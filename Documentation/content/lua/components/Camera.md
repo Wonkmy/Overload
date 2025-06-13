@@ -1,8 +1,12 @@
++++
+title = 'Camera'
++++
+
 ### Description
 Represents a camera entity. Its position will determine its view matrix
 
-- C++ related class: [`OvCore::ECS::Components::CCamera`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CCamera.h)
-- Inherits from lua usertype: [`Component`](Component)
+- C++ related class: [`OvCore::ECS::Components::CCamera`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CCamera.h)
+- Inherits from lua usertype: [`Component`](../Component)
 
 ### Variables
 _This usertype has no variables_

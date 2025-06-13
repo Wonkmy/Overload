@@ -1,9 +1,13 @@
++++
+title = 'Key (enum)'
++++
+
 ### Description
-Keyboard keys
+Enumeration of keyboard keys.
 
-- C++ related class: [`OvWindowing::Inputs::EKey`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvWindowing/include/OvWindowing/Inputs/EKey.h)
+- C++ related class: [`OvWindowing::Inputs::EKey`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvWindowing/include/OvWindowing/Inputs/EKey.h)
 
-### Variables
+### Values
 |Name|Type|Description|
 |-|-|-|
 |UNKNOWN|`number`||
@@ -128,8 +132,18 @@ Keyboard keys
 |RIGHT_SUPER|`number`||
 |MENU|`number`||
 
-### Constructors
-_This usertype has no constructors_
+### Examples
+```lua
+function MyScript::OnUpdate()
+    local spaceKey = Key.SPACE
+    local upArrowKey = Key.UP
 
-### Operators
-_This usertype has no operators_
+    if Inputs.GetKeyDown(spaceKey):
+        Debug.Log("Space key pressed!")
+    end
+
+    if Inputs.GetKeyDown(upArrowKey):
+        Debug.Log("Up arrow key pressed!")
+    end
+end
+```

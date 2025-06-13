@@ -1,8 +1,12 @@
++++
+title = 'Transform'
++++
+
 ### Description
 Represents the 3D transformations applied to an actor
 
-- C++ related class: [`OvCore::ECS::Components::CTransform`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CTransform.h)
-- Inherits from lua usertype: [`Component`](Component)
+- C++ related class: [`OvCore::ECS::Components::CTransform`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CTransform.h)
+- Inherits from lua usertype: [`Component`](../Component)
 
 ### Variables
 _This usertype has no variables_

@@ -1,7 +1,11 @@
++++
+title = 'Vector3'
++++
+
 ### Description
 Mathematic representation of a 3D vector of floats
 
-- C++ related class: [`OvMaths::FVector3`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvMaths/include/OvMaths/FVector3.h)
+- C++ related class: [`OvMaths::FVector3`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvMaths/include/OvMaths/FVector3.h)
 
 ### Variables
 |Name|Type|Description|

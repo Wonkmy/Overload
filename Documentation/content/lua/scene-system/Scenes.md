@@ -1,11 +1,9 @@
++++
+title = 'Scenes (table)'
++++
+
 ### Description
-Some global scenes functions
-
-### Variables
-_This usertype has no variables_
-
-### Constructors
-_This usertype has no constructors_
+Global table containing scene-related functions
 
 ### Functions
 |Name|Input|Output|Description|
@@ -13,5 +11,10 @@ _This usertype has no constructors_
 |GetCurrentScene||`Scene`|Returns the currently active scene|
 |Load|`string`:&nbsp;path<br>|`Scene`|Loads the scene identified by the given path and returns it|
 
-### Operators
-_This usertype has no operators_
+### Examples
+```lua
+function MyScript::OnStart()
+    local scene = Scenes.GetCurrentScene()
+    Scenes.Load("MyScene.ovscene")
+end
+```

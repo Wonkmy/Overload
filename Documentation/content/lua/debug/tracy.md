@@ -1,11 +1,9 @@
++++
+title = 'tracy (table)'
++++
+
 ### Description
-Lua script profiling using Tracy.
-
-### Variables
-_This usertype has no variables_
-
-### Constructors
-_This usertype has no constructors_
+Global table containing tracy-related functions
 
 ### Functions
 |Name|Input|Output|Description|
@@ -17,14 +15,11 @@ _This usertype has no constructors_
 |ZoneName|`string`:&nbsp;text<br>||Sets a zone name on a per-call basis|
 |ZoneEnd|||Ends the current profiling zone|
 
-### Operators
-_This usertype has no operators_
-
-### Example
+### Examples
 ```lua
-local Test = {}
+local MyScript = {}
 
-function Test:OnUpdate(deltaTime)
+function MyScript:OnUpdate(deltaTime)
     tracy.ZoneBegin()
 
     for i = 1, 1000000 do
@@ -36,5 +31,5 @@ function Test:OnUpdate(deltaTime)
     tracy.ZoneEnd()
 end
 
-return Test
+return MyScript
 ```

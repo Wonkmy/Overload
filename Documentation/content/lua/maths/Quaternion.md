@@ -1,7 +1,11 @@
++++
+title = 'Quaternion'
++++
+
 ### Description
 Mathematic representation of a Quaternion with float precision
 
-- C++ related class: [`OvMaths::FQuaternion`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvMaths/include/OvMaths/FQuaternion.h)
+- C++ related class: [`OvMaths::FQuaternion`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvMaths/include/OvMaths/FQuaternion.h)
 
 ### Variables
 |Name|Type|Description|

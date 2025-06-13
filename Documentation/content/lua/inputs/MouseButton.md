@@ -1,9 +1,13 @@
++++
+title = 'MouseButton (enum)'
++++
+
 ### Description
-Mouse buttons
+Enumeration of mouse buttons.
 
-- C++ related class: [`OvWindowing::Inputs::EMouseButton`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvWindowing/include/OvWindowing/Inputs/EMouseButton.h)
+- C++ related class: [`OvWindowing::Inputs::EMouseButton`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvWindowing/include/OvWindowing/Inputs/EMouseButton.h)
 
-### Variables
+### Values
 |Name|Type|Description|
 |-|-|-|
 |BUTTON_1|`number`||
@@ -17,9 +21,3 @@ Mouse buttons
 |BUTTON_LEFT|`number`||
 |BUTTON_RIGHT|`number`||
 |BUTTON_MIDDLE|`number`||
-
-### Constructors
-_This usertype has no constructors_
-
-### Operators
-_This usertype has no operators_

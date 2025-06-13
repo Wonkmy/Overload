@@ -1,7 +1,11 @@
++++
+title = 'TonemappingSettings'
++++
+
 ### Description
 Contains all the settings for the tone mapping effect.
 
-- C++ related class: [`OvCore::Rendering::PostProcess::TonemappingSettings`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/Rendering/PostProcess/TonemappingEffect.h)
+- C++ related class: [`OvCore::Rendering::PostProcess::TonemappingSettings`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/Rendering/PostProcess/TonemappingEffect.h)
 - Inherits from lua usertype: [`EffectSettings`](EffectSettings)
 
 ### Variables

@@ -1,7 +1,11 @@
++++
+title = 'AutoExposureSettings'
++++
+
 ### Description
 Contains all the settings for the auto-exposure effect.
 
-- C++ related class: [`OvCore::Rendering::PostProcess::AutoExposureSettings`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/Rendering/PostProcess/AutoExposureEffect.h)
+- C++ related class: [`OvCore::Rendering::PostProcess::AutoExposureSettings`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/Rendering/PostProcess/AutoExposureEffect.h)
 - Inherits from lua usertype: [`EffectSettings`](EffectSettings)
 
 ### Variables

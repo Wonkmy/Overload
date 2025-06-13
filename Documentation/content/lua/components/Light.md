@@ -1,14 +1,18 @@
++++
+title = 'Light'
++++
+
 ### Description
 Base class for any light
 
-- C++ related class: [`OvCore::ECS::Components::CLight`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CLight.h)
+- C++ related class: [`OvCore::ECS::Components::CLight`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CLight.h)
 - Inherits from lua usertype: [`Component`](Component)
 - Inherited by lua usertypes:
-    - [`PointLight`](PointLight)
-    - [`SpotLight`](SpotLight)
-    - [`DirectionalLight`](DirectionalLight)
-    - [`AmbientBoxLight`](AmbientBoxLight)
-    - [`AmbientSphereLight`](AmbientSphereLight)
+    - [`PointLight`](../PointLight)
+    - [`SpotLight`](../SpotLight)
+    - [`DirectionalLight`](../DirectionalLight)
+    - [`AmbientBoxLight`](../AmbientBoxLight)
+    - [`AmbientSphereLight`](../AmbientSphereLight)
 
 
 ### Variables

@@ -1,7 +1,11 @@
++++
+title = 'Matrix3'
++++
+
 ### Description
 Mathematic representation of a 3x3 Matrix of floats
 
-- C++ related class: [`OvMaths::FMatrix3`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvMaths/include/OvMaths/FMatrix3.h)
+- C++ related class: [`OvMaths::FMatrix3`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvMaths/include/OvMaths/FMatrix3.h)
 
 ### Variables
 _This usertype has no variables_

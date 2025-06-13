@@ -1,7 +1,11 @@
++++
+title = 'EffectSettings'
++++
+
 ### Description
 Base effect settings structure
 
-- C++ related class: [`OvCore::Rendering::PostProcess::EffectSettings`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/Rendering/PostProcess/AEffect.h)
+- C++ related class: [`OvCore::Rendering::PostProcess::EffectSettings`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/Rendering/PostProcess/AEffect.h)
 - Inherited by lua usertypes:
     - [`BloomSettings`](BloomSettings)
     - [`AutoExposureSettings`](AutoExposureSettings)

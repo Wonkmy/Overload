@@ -1,8 +1,12 @@
++++
+title = 'DirectionalLight'
++++
+
 ### Description
 A simple light that has no attenuation and that has a direction
 
-- C++ related class: [`OvCore::ECS::Components::CDirectionalLight`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CDirectionalLight.h)
-- Inherits from lua usertype: [`Light`](Light)
+- C++ related class: [`OvCore::ECS::Components::CDirectionalLight`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CDirectionalLight.h)
+- Inherits from lua usertype: [`Light`](../Light)
 
 ### Variables
 _This usertype has no variables_

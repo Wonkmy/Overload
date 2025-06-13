@@ -1,8 +1,12 @@
++++
+title = 'PhysicalSphere'
++++
+
 ### Description
 Represent a physical object with a sphere shape
 
-- C++ related class: [`OvCore::ECS::Components::CPhysicalSphere`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CPhysicalSphere.h)
-- Inherits from lua usertype: [`PhysicalObject`](PhysicalObject)
+- C++ related class: [`OvCore::ECS::Components::CPhysicalSphere`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CPhysicalSphere.h)
+- Inherits from lua usertype: [`PhysicalObject`](../PhysicalObject)
 
 ### Variables
 _This usertype has no variables_

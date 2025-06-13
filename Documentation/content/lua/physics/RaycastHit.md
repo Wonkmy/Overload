@@ -1,7 +1,11 @@
++++
+title = 'RaycastHit'
++++
+
 ### Description
 Contains the result of a raycast query
 
-- C++ related class: [`OvPhysics::Entities::RaycastHit`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvPhysics/include/OvPhysics/Entities/RaycastHit.h)
+- C++ related class: [`OvPhysics::Entities::RaycastHit`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvPhysics/include/OvPhysics/Entities/RaycastHit.h)
 
 ### Variables
 |Name|Type|Description|

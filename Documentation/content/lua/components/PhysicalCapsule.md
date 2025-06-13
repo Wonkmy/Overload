@@ -1,8 +1,12 @@
++++
+title = 'PhysicalCapsule'
++++
+
 ### Description
 Represent a physical object with a capsule shape
 
-- C++ related class: [`OvCore::ECS::Components::CPhysicalCapsule`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CPhysicalCapsule.h)
-- Inherits from lua usertype: [`PhysicalObject`](PhysicalObject)
+- C++ related class: [`OvCore::ECS::Components::CPhysicalCapsule`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CPhysicalCapsule.h)
+- Inherits from lua usertype: [`PhysicalObject`](../PhysicalObject)
 
 
 ### Variables

@@ -1,8 +1,12 @@
++++
+title = 'ReflectionProbe'
++++
+
 ### Description
 Component that captures the surrounding environment into a cubemap texture.
 
 - C++ related class: [`OvCore::ECS::Components::CReflectionProbe`](https://github.com/Overload-Technologies/Overload/blob/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CReflectionProbe.h)
-- Inherits from lua usertype: [`Component`](Component)
+- Inherits from lua usertype: [`Component`](../Component)
 
 ### Variables
 _This usertype has no variables_

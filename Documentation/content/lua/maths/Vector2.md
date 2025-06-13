@@ -1,7 +1,11 @@
++++
+title = 'Vector2'
++++
+
 ### Description
 Mathematic representation of a 2D vector of floats
 
-- C++ related class: [`OvMaths::FVector2`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvMaths/include/OvMaths/FVector2.h)
+- C++ related class: [`OvMaths::FVector2`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvMaths/include/OvMaths/FVector2.h)
 
 ### Variables
 |Name|Type|Description|

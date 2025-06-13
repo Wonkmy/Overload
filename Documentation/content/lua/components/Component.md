@@ -1,18 +1,22 @@
++++
+title = 'Component'
++++
+
 ### Description
 A component is a set of data and behaviours (Entity-Component without systems) that is interpreted by the engine (Or the user)
 
-- C++ related class: [`OvCore::ECS::Components::AComponent`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/AComponent.h)
+- C++ related class: [`OvCore::ECS::Components::AComponent`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/AComponent.h)
 - Inherited by lua usertypes:
-  - [`Transform`](Transform)
-  - [`Camera`](Camera)
-  - [`MaterialRenderer`](MaterialRenderer)
-  - [`ModelRenderer`](ModelRenderer)
-  - [`Light`](Light)
-  - [`PhysicalObject`](PhysicalObject)
-  - [`AudioListener`](AudioListener)
-  - [`AudioSource`](AudioSource)
-  - [`PostProcessStack`](PostProcessStack)
-  - [`ReflectionProbe`](ReflectionProbe)
+  - [`Transform`](../Transform)
+  - [`Camera`](../Camera)
+  - [`MaterialRenderer`](../MaterialRenderer)
+  - [`ModelRenderer`](../ModelRenderer)
+  - [`Light`](../Light)
+  - [`PhysicalObject`](../PhysicalObject)
+  - [`AudioListener`](../AudioListener)
+  - [`AudioSource`](../AudioSource)
+  - [`PostProcessStack`](../PostProcessStack)
+  - [`ReflectionProbe`](../ReflectionProbe)
 
 ### Variables
 _This usertype has no variables_

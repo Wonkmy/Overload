@@ -1,7 +1,11 @@
++++
+title = 'Vector4'
++++
+
 ### Description
 Mathematic representation of a 4D vector of floats
 
-- C++ related class: [`OvMaths::FVector4`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvMaths/include/OvMaths/FVector4.h)
+- C++ related class: [`OvMaths::FVector4`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvMaths/include/OvMaths/FVector4.h)
 
 ### Variables
 |Name|Type|Description|

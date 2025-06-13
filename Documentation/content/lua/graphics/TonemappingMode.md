@@ -1,9 +1,13 @@
++++
+title = 'TonemappingMode (enum)'
++++
+
 ### Description
 Tonemapping modes
 
-- C++ related class: [`OvCore::Rendering::PostProcess`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/Rendering/PostProcess/TonemappingEffect.h)
+- C++ related class: [`OvCore::Rendering::PostProcess`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/Rendering/PostProcess/TonemappingEffect.h)
 
-### Variables
+### Values
 |Name|Type|Description|
 |-|-|-|
 |NEUTRAL|`number`||
@@ -12,9 +16,3 @@ Tonemapping modes
 |UNCHARTED2|`number`||
 |UNCHARTED2_FILMIC|`number`||
 |ACES|`number`||
-
-### Constructors
-_This usertype has no constructors_
-
-### Operators
-_This usertype has no operators_

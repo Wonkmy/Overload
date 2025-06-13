@@ -1,8 +1,12 @@
++++
+title = 'SpotLight'
++++
+
 ### Description
 A light that is localized, has attenuation and has a direction
 
-- C++ related class: [`OvCore::ECS::Components::CSpotLight`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CSpotLight.h)
-- Inherits from lua usertype: [`Light`](Light)
+- C++ related class: [`OvCore::ECS::Components::CSpotLight`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CSpotLight.h)
+- Inherits from lua usertype: [`Light`](../Light)
 
 ### Variables
 _This usertype has no variables_

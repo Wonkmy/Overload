@@ -1,8 +1,12 @@
++++
+title = 'PointLight'
++++
+
 ### Description
 A light that is localized and has attenuation
 
-- C++ related class: [`OvCore::ECS::Components::CPointLight`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CPointLight.h)
-- Inherits from lua usertype: [`Light`](Light)
+- C++ related class: [`OvCore::ECS::Components::CPointLight`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CPointLight.h)
+- Inherits from lua usertype: [`Light`](../Light)
 
 ### Variables
 _This usertype has no variables_

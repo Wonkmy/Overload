@@ -1,8 +1,12 @@
++++
+title = 'Actor'
++++
+
 ### Description
 The Actor is the main class of the ECS, it corresponds to the entity and is
 composed of componenents and behaviours (scripts)
 
-- C++ related class: [`OvCore::ECS::Actor`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Actor.h)
+- C++ related class: [`OvCore::ECS::Actor`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Actor.h)
 
 ### Variables
 _This usertype has no variables_

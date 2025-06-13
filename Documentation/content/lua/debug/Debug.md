@@ -1,11 +1,9 @@
++++
+title = 'Debug (table)'
++++
+
 ### Description
-Some global debug functions
-
-### Variables
-_This usertype has no variables_
-
-### Constructors
-_This usertype has no constructors_
+Global table containing debug-related functions
 
 ### Functions
 |Name|Input|Output|Description|
@@ -15,5 +13,10 @@ _This usertype has no constructors_
 |LogWarning|`string`:&nbsp;message<br>||Log a message to the console with `Warning` severity|
 |LogError|`string`:&nbsp;message<br>||Log a message to the console with `Error` severity|
 
-### Operators
-_This usertype has no operators_
+### Examples
+```lua
+function MyScript:OnStart()
+    Debug.Log("Hello World!")
+end
+
+```

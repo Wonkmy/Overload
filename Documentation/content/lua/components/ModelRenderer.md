@@ -1,8 +1,12 @@
-### Description
-A ModelRenderer is necessary in combination with a MaterialRenderer to render a model in the world
++++
+title = 'ModelRenderer'
++++
 
-- C++ related class: [`OvCore::ECS::Components::CModelRenderer`](https://github.com/adriengivry/Overload/blob/develop/Sources/Overload/OvCore/include/OvCore/ECS/Components/CModelRenderer.h)
-- Inherits from lua usertype: [`Component`](Component)
+### Description
+A `ModelRenderer` is necessary in combination with a `MaterialRenderer` to render a model in the world
+
+- C++ related class: [`OvCore::ECS::Components::CModelRenderer`](https://github.com/Overload-Technologies/Overload/tree/main/Sources/Overload/OvCore/include/OvCore/ECS/Components/CModelRenderer.h)
+- Inherits from lua usertype: [`Component`](../Component)
 
 ### Variables
 _This usertype has no variables_
