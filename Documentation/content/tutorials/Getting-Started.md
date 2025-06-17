@@ -1,27 +1,33 @@
++++
+title = 'Getting Started'
+weight = 1
++++
+
 In this page, we will see how to get Overload, create a new project, and create our very first scene.
 
 # 0. Table of contents
 
-- [1. Glossary](#1-Glossary)
-- [2. Getting Overload](#2-Getting-Overload)
-    - [2.1. From Sources](#21-From-Sources)
-    - [2.2. From a Release Build](#22-From-a-Release-Build)
-- [3. Project Hub](#3-Project-Hub)
-- [4. Editor Layout](#4-Editor-Layout)
-    - [4.1. Scene View](#41-Scene-View)
-    - [4.2. Game View](#42-Game-View)
-    - [4.3. Toolbar](#43-Toolbar)
-    - [4.4. Asset Browser](#44-Asset-Browser)
-    - [4.5. Hierarchy](#45-Hierarchy)
-    - [4.6. Inspector](#46-Inspector)
-    - [4.7. Console](#47-Console)
-    - [4.8. Profiler](#48-Profiler)
-    - [4.9. Hardware Info](#49-Hardware-Info)
-    - [4.10. Asset View](#410-Asset-View)
-    - [4.11. Help](#411-Help)
-    - [4.12. Project Settings](#412-Project-Settings)
-    - [4.13. Material Editor](#413-Material-Editor)
-    - [4.14. Asset Metadata Editor](#414-Asset-Metadata-Editor)
+- [0. Table of contents](#0-table-of-contents)
+- [1. Glossary](#1-glossary)
+- [2. Getting Overload](#2-getting-overload)
+    - [2.1. From Sources](#21-from-sources)
+    - [2.2. From a Release build](#22-from-a-release-build)
+- [3. Project Hub](#3-project-hub)
+- [4. Editor Layout](#4-editor-layout)
+    - [4.1. Scene View](#41-scene-view)
+    - [4.2. Game View](#42-game-view)
+    - [4.3. Toolbar](#43-toolbar)
+    - [4.4. Asset Browser](#44-asset-browser)
+    - [4.5. Hierarchy](#45-hierarchy)
+    - [4.6. Inspector](#46-inspector)
+    - [4.7. Console](#47-console)
+    - [4.8. Profiler](#48-profiler)
+    - [4.9. Hardware Info](#49-hardware-info)
+    - [4.10. Asset View](#410-asset-view)
+    - [4.11. Help](#411-help)
+    - [4.12. Project Settings](#412-project-settings)
+    - [4.13. Material Editor](#413-material-editor)
+    - [4.14. Asset Metadata Editor](#414-asset-metadata-editor)
 - [5. Creating our very first scene!](#5-creating-our-very-first-scene)
     - [5.1. Creating an empty scene](#51-creating-an-empty-scene)
     - [5.2. Creating actors](#52-creating-actors)

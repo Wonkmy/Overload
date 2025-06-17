@@ -1,9 +1,15 @@
++++
+title = 'Building Your Game'
+weight = 2
++++
+
 # 0. Table of contents
-- [1. Creating a scene](#1-Creating-a-scene)
-- [2. Setuping your project](#2-Setuping-your-project)
-- [3. Building](#3-Building)
-- [4. Profiling](#4-Profiling)
-- [5. Releasing](#5-Releasing)
+- [0. Table of contents](#0-table-of-contents)
+- [1. Creating a scene](#1-creating-a-scene)
+- [2. Setuping your project](#2-setuping-your-project)
+- [3. Building](#3-building)
+- [4. Profiling](#4-profiling)
+- [5. Releasing](#5-releasing)
 
 # 1. Creating a scene
 The first step to build your game is to create a scene. If you haven't followed the [Getting Started](https://github.com/adriengivry/Overload/wiki/Getting-Started) guide, we encourage you to do so.

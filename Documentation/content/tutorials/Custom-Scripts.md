@@ -1,3 +1,8 @@
++++
+title = 'Creating Scripts'
+weight = 3
++++
+
 ### Creating a script
 Every scripts in Overload are behaviours, meaning that when creating a script, your custom usertype will get interpreted by the engine as a behaviour that can be attached to any Actor.
 
