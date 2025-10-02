@@ -198,11 +198,8 @@ void OvCore::ECS::Components::CReflectionProbe::OnDeserialize(tinyxml2::XMLDocum
 {
 	using namespace OvCore::Helpers;
 
-	// Not ideal, but avoids garbage value from overriding the current resolution.
-	if (p_node->FirstChildElement("resolution"))
-	{
-		m_resolution = Serializer::DeserializeInt(p_doc, p_node, "resolution");
-	}
+	const uint32_t previousResolution = m_resolution;
+	const ECaptureSpeed previousCaptureSpeed = m_captureSpeed;
 
 	Serializer::DeserializeUint32(p_doc, p_node, "refresh_mode", reinterpret_cast<uint32_t&>(m_refreshMode));
 	Serializer::DeserializeUint32(p_doc, p_node, "capture_speed", reinterpret_cast<uint32_t&>(m_captureSpeed));
@@ -214,6 +211,15 @@ void OvCore::ECS::Components::CReflectionProbe::OnDeserialize(tinyxml2::XMLDocum
 	Serializer::DeserializeBoolean(p_doc, p_node, "box_projection", m_boxProjection);
 
 	m_captureFaceIndex = 0;
+
+	// Reallocate resources if resolution or double buffering requirements changed
+	const bool resolutionChanged = m_resolution != previousResolution;
+	const bool doubleBufferingChanged = RequiresDoubleBuffering(m_captureSpeed) != RequiresDoubleBuffering(previousCaptureSpeed);
+
+	if (resolutionChanged || doubleBufferingChanged)
+	{
+		_AllocateResources();
+	}
 }
 
 void OvCore::ECS::Components::CReflectionProbe::OnInspector(OvUI::Internal::WidgetContainer& p_root)
