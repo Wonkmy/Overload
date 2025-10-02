@@ -110,7 +110,7 @@ float OvCore::ECS::Components::CReflectionProbe::GetBrightness() const
 void OvCore::ECS::Components::CReflectionProbe::SetCubemapResolution(uint32_t p_resolution)
 {
 	OVASSERT(p_resolution > 0, "Cubemap resolution must be greater than 0");
-	OVASSERT((p_resolution & (p_resolution - 1)) == 0 > 0, "Cubemap resolution must be a power of 2");
+	OVASSERT((p_resolution & (p_resolution - 1)) == 0, "Cubemap resolution must be a power of 2");
 
 	if (p_resolution != m_resolution)
 	{
@@ -211,6 +211,12 @@ void OvCore::ECS::Components::CReflectionProbe::OnDeserialize(tinyxml2::XMLDocum
 	Serializer::DeserializeBoolean(p_doc, p_node, "box_projection", m_boxProjection);
 
 	m_captureFaceIndex = 0;
+
+	// Validate resolution (must be power of 2)
+	if (m_resolution == 0 || (m_resolution & (m_resolution - 1)) != 0)
+	{
+		m_resolution = previousResolution; // Restore previous valid value
+	}
 
 	// Reallocate resources if resolution or double buffering requirements changed
 	const bool resolutionChanged = m_resolution != previousResolution;
