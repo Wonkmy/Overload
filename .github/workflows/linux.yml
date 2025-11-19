@@ -1,6 +1,7 @@
 name: Linux Clang
 
 on:
+  workflow_dispatch:
   pull_request:
     types: [ready_for_review, synchronize]
   push:
