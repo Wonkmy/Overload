@@ -32,7 +32,7 @@ jobs:
 
     - name: Generate premake5 solution
       working-directory: ${{env.SOLUTION_FILE_PATH}}
-      run: ./gen_proj_linux.sh
+      run: ./gen_proj.sh
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}

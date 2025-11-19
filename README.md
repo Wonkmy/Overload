@@ -68,32 +68,23 @@ In a rush? [Get the latest release](https://github.com/Overload-Technologies/Ove
 ```powershell
 git clone https://github.com/Overload-Technologies/Overload
 cd Overload
-.\gen_proj_win32.bat # generate project files for Visual Studio 2022
-
-# (Optional) open the solution in Visual Studio
-.\Overload.sln
+.\gen_proj.bat vs2026 # generate project files for Visual Studio 2026
+.\Overload.sln # Open the solution in Visual Studio
 ```
+
+> [!note]
+> Supported actions for `gen_proj.bat` are: `vs2026` (default), `vs2022`, `gmake`, `codelite`
 
 ### Linux (Clang)
 ```bash
 git clone https://github.com/Overload-Technologies/Overload
 cd Overload
-./gen_proj_linux.sh # generate Makefiles
-
-# (Optional) build the project
-make
+./gen_proj.sh gmake # generate project files for Makefile
+make -j$(nproc) # build the project using all available CPU cores
 ```
 
-### Other Platforms & IDEs
-`gen_proj` scripts can be invoked with an argument to specify the the action to perform.
-```bash
-# Generating Makefile on Windows
-.\gen_proj_win32.bat gmake
-
-# Generating CodeLite project on Linux
-./gen_proj_linux.sh codelite
-``` 
-*Please refer to [Premake5's documentation](https://premake.github.io/docs/Using-Premake) to find supported IDEs.*
+> [!note]
+> Supported actions for `gen_proj.sh` are: `gmake` (default), `codelite`
 
 # Architecture
 Overload is divided into 11 modules: 9 libraries (SDK), and 2 executables (Applications).

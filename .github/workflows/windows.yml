@@ -28,7 +28,7 @@ jobs:
     
     - name: Generate premake5 solution
       working-directory: ${{env.SOLUTION_FILE_PATH}}
-      run: .\gen_proj_win32.bat
+      run: .\gen_proj.bat
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
