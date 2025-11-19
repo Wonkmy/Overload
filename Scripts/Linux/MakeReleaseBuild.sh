@@ -11,14 +11,14 @@ for arg in "$@"; do
 done
 
 # Build Debug
-"$SCRIPT_DIR/BuildAll.sh" debug
+"$SCRIPT_DIR/Build.sh" debug
 if [ $? -ne 0 ]; then
     echo "Debug build failed. Exiting."
     exit $?
 fi
 
 # Build Release
-"$SCRIPT_DIR/BuildAll.sh" release
+"$SCRIPT_DIR/Build.sh" release
 if [ $? -ne 0 ]; then
     echo "Release build failed. Exiting."
     exit $?
