@@ -1,5 +1,5 @@
 @echo off
 
-call "%~dp0\Scripts\Windows\RunPremake5.bat" %*
+call "%~dp0\Scripts\Windows\GenerateProjects.bat" %*
 
 exit /b %errorlevel%

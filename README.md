@@ -73,7 +73,8 @@ cd Overload
 ```
 
 > [!note]
-> Supported actions for `gen_proj.bat` are: `vs2026` (default), `vs2022`, `gmake`, `codelite`
+> Officially supported actions for `gen_proj.bat` are: `vs2026` (default), `vs2022`, `gmake`, `codelite`.<br/>
+> Refer to [premake's website](https://premake.github.io/docs/Using-Premake) for more information.
 
 ### Linux (Clang)
 ```bash
@@ -84,7 +85,8 @@ make -j$(nproc) # build the project using all available CPU cores
 ```
 
 > [!note]
-> Supported actions for `gen_proj.sh` are: `gmake` (default), `codelite`
+> Officially supported actions for `gen_proj.sh` are: `gmake` (default), `codelite`.<br/>
+> Refer to [premake's website](https://premake.github.io/docs/Using-Premake) for more information.
 
 # Architecture
 Overload is divided into 11 modules: 9 libraries (SDK), and 2 executables (Applications).

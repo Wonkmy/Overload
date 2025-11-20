@@ -6,7 +6,7 @@ set "CONFIGURATION=%~1"
 
 :: Generate the projects
 pushd "%~dp0"
-call .\RunPremake5.bat vs2022 %CONFIGURATION%
+call .\GenerateProjects.bat vs2022 %CONFIGURATION%
 popd
 
 :: Initialize variables

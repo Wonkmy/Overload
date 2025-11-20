@@ -8,7 +8,7 @@ CONFIG_LOWER=$(echo "$CONFIGURATION" | tr '[:upper:]' '[:lower:]')
 
 # Generate project files
 pushd "$(dirname "$0")" > /dev/null
-./RunPremake5.sh
+./GenerateProjects.sh
 popd > /dev/null
 
 # Build the solution
