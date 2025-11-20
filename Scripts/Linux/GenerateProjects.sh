@@ -1,11 +1,13 @@
 #!/bin/bash
 
-# Get the action parameter (default to gmake)
-ACTION="${1:-gmake}"
+WORKSPACE_ROOT="$(dirname "$0")/../.."
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PREMAKE_PATH="$SCRIPT_DIR/../../Dependencies/premake5/bin/premake5"
+# If no argument is provided, default to gmake
+if [ $# -eq 0 ]; then
+    echo "No action specified. Defaulting to 'gmake'."
+    set -- gmake
+fi
 
-pushd "$SCRIPT_DIR/../.." > /dev/null
-"$PREMAKE_PATH" "$ACTION"
+pushd "$WORKSPACE_ROOT" > /dev/null
+"./Dependencies/premake5/bin/premake5" "$@"
 popd > /dev/null

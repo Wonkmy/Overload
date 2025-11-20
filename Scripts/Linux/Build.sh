@@ -6,9 +6,9 @@ CONFIGURATION="${1:-debug}"
 # Convert to lowercase for make
 CONFIG_LOWER=$(echo "$CONFIGURATION" | tr '[:upper:]' '[:lower:]')
 
-# Generate the projects
+# Generate project files
 pushd "$(dirname "$0")" > /dev/null
-./GenerateProjects.sh gmake
+./GenerateProjects.sh
 popd > /dev/null
 
 # Build the solution

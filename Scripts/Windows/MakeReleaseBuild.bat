@@ -3,13 +3,13 @@ pushd "%~dp0"
 set NO_OPEN=false
 if "%1"=="--no-open" set NO_OPEN=true
 
-call .\BuildAll.bat Debug
+call .\Build.bat Debug
 if %ERRORLEVEL% neq 0 (
     echo Debug build failed. Exiting.
     exit /b %ERRORLEVEL%
 )
 
-call .\BuildAll.bat Release
+call .\Build.bat Release
 if %ERRORLEVEL% neq 0 (
     echo Release build failed. Exiting.
     exit /b %ERRORLEVEL%
@@ -18,7 +18,6 @@ if %ERRORLEVEL% neq 0 (
 :: The output is located in a folder called ..\..\Build\Release. Create an archive with this folder's content, and name the archive Overload-<version>-<platform>.zip.
 for /f "delims=" %%v in (..\..\VERSION.txt) do set version=%%v
 set platform=win32_x64
-
 
 :: Navigate to the release folder
 pushd ..\..\Build\
