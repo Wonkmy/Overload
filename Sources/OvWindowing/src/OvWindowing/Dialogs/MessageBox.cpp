@@ -7,6 +7,9 @@
 #ifdef _WIN32
 #include <windows.h>
 #else
+#include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
 #include <cstdio>
 #include <memory>
 #include <array>
@@ -45,7 +48,20 @@ void OvWindowing::Dialogs::MessageBox::Spawn()
 	m_userResult = static_cast<EUserAction>(msgboxID);
 #else
 	// Linux implementation using zenity
+	std::string attachArg;
+	GLFWwindow* glfwWin = glfwGetCurrentContext();
+	if (glfwWin)
+	{
+		unsigned long xid = (unsigned long)glfwGetX11Window(glfwWin);
+		attachArg = " --attach=" + std::to_string(xid);
+	}
+	else
+	{
+		printf("NO GLFW WINDOW\n");
+	}
+
 	std::string command = "zenity --question"; // Always use question dialog for flexibility
+	command += attachArg; // <-- attach to our window
 	
 	// Add title and message
 	command += " --title=\"" + m_title + "\"";
