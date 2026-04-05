@@ -4,14 +4,12 @@
 * @licence: MIT
 */
 
+#pragma once
+
 #include <vector>
 
-
-#include "OvRendering/Geometry/Vertex.h"
-#include "OvRendering/Resources/Mesh.h"
-#include "OvRendering/Resources/Parsers/IModelParser.h"
-
-#pragma once
+#include <OvRendering/Resources/Mesh.h>
+#include <OvRendering/Resources/Parsers/IModelParser.h>
 
 namespace OvRendering::Resources::Parsers
 {
@@ -33,12 +31,9 @@ namespace OvRendering::Resources::Parsers
 			const std::string& p_fileName,
 			std::vector<Mesh*>& p_meshes,
 			std::vector<std::string>& p_materials,
+			std::optional<Animation::Skeleton>& p_skeleton,
+			std::vector<Animation::SkeletalAnimation>& p_animations,
 			EModelParserFlags p_parserFlags
 		) override;
-
-	private:
-		void ProcessMaterials(const struct aiScene* p_scene, std::vector<std::string>& p_materials);;
-		void ProcessNode(void* p_transform, struct aiNode* p_node, const struct aiScene* p_scene, std::vector<Mesh*>& p_meshes);
-		void ProcessMesh(void* p_transform, struct aiMesh* p_mesh, const struct aiScene* p_scene, std::vector<Geometry::Vertex>& p_outVertices, std::vector<uint32_t>& p_outIndices);
 	};
 }

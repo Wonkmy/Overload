@@ -6,6 +6,10 @@
 
 #pragma once
 
+#include <cstdint>
+
+#include <OvRendering/Animation/SkeletalData.h>
+
 namespace OvRendering::Geometry
 {
 	/**
@@ -18,5 +22,14 @@ namespace OvRendering::Geometry
 		float normals[3];
 		float tangent[3];
 		float bitangent[3];
+	};
+
+	/**
+	* Extends Vertex with skeletal animation data
+	*/
+	struct SkinnedVertex : Vertex
+	{
+		uint32_t boneIDs[Animation::kMaxBonesPerVertex] = {};
+		float boneWeights[Animation::kMaxBonesPerVertex] = {};
 	};
 }

@@ -21,6 +21,7 @@
 #include <OvCore/ECS/Components/CPointLight.h>  
 #include <OvCore/ECS/Components/CPostProcessStack.h>  
 #include <OvCore/ECS/Components/CReflectionProbe.h>  
+#include <OvCore/ECS/Components/CSkinnedMeshRenderer.h>  
 #include <OvCore/ECS/Components/CSpotLight.h>  
 #include <OvCore/ECS/Components/CTransform.h>
 
@@ -87,10 +88,32 @@ void BindLuaComponents(sol::state& p_luaState)
 		"GetUserMatrixElement", &CMaterialRenderer::GetUserMatrixElement
 	);
 
+	p_luaState.new_usertype<CSkinnedMeshRenderer>("SkinnedMeshRenderer",
+		sol::base_classes, sol::bases<AComponent>(),
+		"Play", &CSkinnedMeshRenderer::Play,
+		"Pause", &CSkinnedMeshRenderer::Pause,
+		"Stop", &CSkinnedMeshRenderer::Stop,
+		"IsPlaying", &CSkinnedMeshRenderer::IsPlaying,
+		"SetLooping", &CSkinnedMeshRenderer::SetLooping,
+		"IsLooping", &CSkinnedMeshRenderer::IsLooping,
+		"SetPlaybackSpeed", &CSkinnedMeshRenderer::SetPlaybackSpeed,
+		"GetPlaybackSpeed", &CSkinnedMeshRenderer::GetPlaybackSpeed,
+		"SetTime", &CSkinnedMeshRenderer::SetTime,
+		"GetTime", &CSkinnedMeshRenderer::GetTime,
+		"GetAnimationCount", &CSkinnedMeshRenderer::GetAnimationCount,
+		"GetAnimationName", &CSkinnedMeshRenderer::GetAnimationName,
+		"SetAnimation", sol::overload(
+			sol::resolve<bool(std::optional<uint32_t>)>(&CSkinnedMeshRenderer::SetAnimation),
+			sol::resolve<bool(const std::string&)>(&CSkinnedMeshRenderer::SetAnimation)
+		),
+		"GetActiveAnimationIndex", &CSkinnedMeshRenderer::GetActiveAnimationIndex,
+		"GetActiveAnimationName", &CSkinnedMeshRenderer::GetActiveAnimationName
+	);
+
 	p_luaState.new_enum<OvPhysics::Entities::PhysicalObject::ECollisionDetectionMode>("CollisionDetectionMode", {
 		{"DISCRETE", OvPhysics::Entities::PhysicalObject::ECollisionDetectionMode::DISCRETE},
 		{"CONTINUOUS", OvPhysics::Entities::PhysicalObject::ECollisionDetectionMode::CONTINUOUS}
-		});
+	});
 
 	p_luaState.new_usertype<CPhysicalObject>("PhysicalObject",
 		sol::base_classes, sol::bases<AComponent>(),
