@@ -47,6 +47,7 @@ Overload pillars are:
 - Material editor
 - Spatial audio
 - Rigidbody physics
+- Skeletal animation
 - And many more to come...
 
 Check out our [issues](https://github.com/Overload-Technologies/Overload/issues) and [pull requests](https://github.com/Overload-Technologies/Overload/pulls) to learn more about what's coming next!
