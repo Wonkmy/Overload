@@ -259,15 +259,27 @@ void OvEditor::Panels::MenuBar::CreateLayoutMenu()
 
 void OvEditor::Panels::MenuBar::CreateHelpMenu()
 {
-    auto& helpMenu = CreateWidget<MenuList>("Help");
-    helpMenu.CreateWidget<MenuItem>("GitHub").ClickedEvent += [] {OvTools::Utils::SystemCalls::OpenURL("https://github.com/Overload-Technologies/Overload"); };
-    helpMenu.CreateWidget<MenuItem>("Tutorials").ClickedEvent += [] {OvTools::Utils::SystemCalls::OpenURL("https://github.com/Overload-Technologies/Overload/wiki/Tutorials"); };
-    helpMenu.CreateWidget<MenuItem>("Scripting API").ClickedEvent += [] {OvTools::Utils::SystemCalls::OpenURL("https://github.com/Overload-Technologies/Overload/wiki/Scripting-API"); };
-    helpMenu.CreateWidget<Visual::Separator>();
-    helpMenu.CreateWidget<MenuItem>("Bug Report").ClickedEvent += [] {OvTools::Utils::SystemCalls::OpenURL("https://github.com/Overload-Technologies/Overload/issues/new?assignees=&labels=Bug&template=bug_report.md&title="); };
-    helpMenu.CreateWidget<MenuItem>("Feature Request").ClickedEvent += [] {OvTools::Utils::SystemCalls::OpenURL("https://github.com/Overload-Technologies/Overload/issues/new?assignees=&labels=Feature&template=feature_request.md&title="); };
-    helpMenu.CreateWidget<Visual::Separator>();
-    helpMenu.CreateWidget<Texts::Text>("Version: " + std::string(OVERLOAD_VERSION));
+	const std::string repoURL = "https://github.com/Overload-Technologies/Overload";
+
+	auto& helpMenu = CreateWidget<MenuList>("Help");
+	helpMenu.CreateWidget<MenuItem>("GitHub").ClickedEvent += [repoURL] {OvTools::Utils::SystemCalls::OpenURL(repoURL); };
+	helpMenu.CreateWidget<MenuItem>("Wiki").ClickedEvent += [repoURL] {OvTools::Utils::SystemCalls::OpenURL(repoURL + "/wiki"); };
+	helpMenu.CreateWidget<MenuItem>("API Reference").ClickedEvent += [repoURL] {
+		// FIXME: Workaround to be removed once the version following 1.8 is released.
+		// This ensures the first few commits before the next release still have the "API Reference"
+		// button point to a valid URL.
+		const std::string tag =
+			std::string(OVERLOAD_VERSION) == "1.8" ?
+			"main" :
+			"v" + std::string(OVERLOAD_VERSION);
+
+		OvTools::Utils::SystemCalls::OpenURL(repoURL + std::format("/tree/{}/API", tag));
+	};
+	helpMenu.CreateWidget<Visual::Separator>();
+	helpMenu.CreateWidget<MenuItem>("Bug Report").ClickedEvent += [repoURL] {OvTools::Utils::SystemCalls::OpenURL(repoURL + "/issues/new?assignees=&labels=Bug&template=bug_report.md&title="); };
+	helpMenu.CreateWidget<MenuItem>("Feature Request").ClickedEvent += [repoURL] {OvTools::Utils::SystemCalls::OpenURL(repoURL + "/issues/new?assignees=&labels=Feature&template=feature_request.md&title="); };
+	helpMenu.CreateWidget<Visual::Separator>();
+	helpMenu.CreateWidget<Texts::Text>("Version: " + std::string(OVERLOAD_VERSION));
 }
 
 void OvEditor::Panels::MenuBar::RegisterPanel(const std::string& p_name, OvUI::Panels::PanelWindow& p_panel)
