@@ -2,7 +2,7 @@
 Contains all the settings for the bloom effect.
 
 - C++ related class: [`OvCore::Rendering::PostProcess::BloomEffect`](/Sources/OvCore/include/OvCore/Rendering/PostProcess/BloomEffect.h)
-- Inherits from lua usertype: [`EffectSettings`](EffectSettings)
+- Inherits from lua usertype: [`EffectSettings`](EffectSettings.md)
 
 ### Variables
 |Name|Type|Description|

@@ -3,10 +3,10 @@ Base effect settings structure
 
 - C++ related class: [`OvCore::Rendering::PostProcess::EffectSettings`](/Sources/OvCore/include/OvCore/Rendering/PostProcess/AEffect.h)
 - Inherited by lua usertypes:
-    - [`BloomSettings`](BloomSettings)
-    - [`AutoExposureSettings`](AutoExposureSettings)
-    - [`TonemappingSettings`](TonemappingSettings)
-    - [`FXAASettings`](FXAASettings)
+    - [`BloomSettings`](BloomSettings.md)
+    - [`AutoExposureSettings`](AutoExposureSettings.md)
+    - [`TonemappingSettings`](TonemappingSettings.md)
+    - [`FXAASettings`](FXAASettings.md)
 
 ### Variables
 |Name|Type|Description|

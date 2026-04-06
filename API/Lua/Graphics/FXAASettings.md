@@ -2,7 +2,7 @@
 Contains all the settings for the FXAA effect.
 
 - C++ related class: [`OvCore::Rendering::PostProcess::FXAASettings`](/Sources/OvCore/include/OvCore/Rendering/PostProcess/FXAAEffect.h)
-- Inherits from lua usertype: [`EffectSettings`](EffectSettings)
+- Inherits from lua usertype: [`EffectSettings`](EffectSettings.md)
 
 ### Variables
 _This usertype has no variables_

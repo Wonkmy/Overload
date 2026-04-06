@@ -2,7 +2,7 @@
 Contains all the settings for the tone mapping effect.
 
 - C++ related class: [`OvCore::Rendering::PostProcess::TonemappingSettings`](/Sources/OvCore/include/OvCore/Rendering/PostProcess/TonemappingEffect.h)
-- Inherits from lua usertype: [`EffectSettings`](EffectSettings)
+- Inherits from lua usertype: [`EffectSettings`](EffectSettings.md)
 
 ### Variables
 |Name|Type|Description|
