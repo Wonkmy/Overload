@@ -25,6 +25,7 @@
 #include <OvUI/Widgets/InputFields/InputText.h>
 #include <OvUI/Widgets/Selection/ColorEdit.h>
 #include <OvUI/Widgets/Selection/ComboBox.h>
+#include <filesystem>
 
 #include "OvEditor/Core/EditorActions.h"
 #include "OvEditor/Panels/AssetView.h"
@@ -185,6 +186,9 @@ void OvEditor::Panels::MenuBar::InitializeSettingsMenu()
 	debuggingMenu.CreateWidget<MenuItem>("Editor Frustum Geometry Culling", "", true, Settings::EditorSettings::EditorFrustumGeometryCulling).ValueChangedEvent += [this](bool p_value) { Settings::EditorSettings::EditorFrustumGeometryCulling = p_value; };
 	debuggingMenu.CreateWidget<MenuItem>("Editor Frustum Light Culling", "", true, Settings::EditorSettings::EditorFrustumLightCulling).ValueChangedEvent += [this](bool p_value) { Settings::EditorSettings::EditorFrustumLightCulling = p_value; };
 	
+	auto& scriptingMenu = m_settingsMenu->CreateWidget<MenuList>("Scripting");
+	scriptingMenu.CreateWidget<MenuItem>("Regenerate Scripting Project Files On Startup", "", true, Settings::EditorSettings::RegenerateScriptingProjectFilesOnStartup).ValueChangedEvent += [this](bool p_value) { Settings::EditorSettings::RegenerateScriptingProjectFilesOnStartup = p_value; };
+
 	auto& consoleSettingsMenu = m_settingsMenu->CreateWidget<MenuList>("Console Settings");
 	auto& consoleMaxLogsSlider = consoleSettingsMenu.CreateWidget<OvUI::Widgets::Sliders::SliderInt>(1, 1000, Settings::EditorSettings::ConsoleMaxLogs.Get(), OvUI::Widgets::Sliders::ESliderOrientation::HORIZONTAL, "Max Logs");
 	consoleMaxLogsSlider.ValueChangedEvent += [this](int p_value) { 
@@ -242,6 +246,7 @@ void OvEditor::Panels::MenuBar::CreateResourcesMenu()
 	auto& resourcesMenu = CreateWidget<MenuList>("Resources");
 	resourcesMenu.CreateWidget<MenuItem>("Compile shaders").ClickedEvent += EDITOR_BIND(CompileShaders);
 	resourcesMenu.CreateWidget<MenuItem>("Save materials").ClickedEvent += EDITOR_BIND(SaveMaterials);
+	resourcesMenu.CreateWidget<MenuItem>("Regenerate Scripting Project Files").ClickedEvent += EDITOR_BIND(RegenerateScriptingProjectFiles);
 }
 
 void OvEditor::Panels::MenuBar::CreateToolsMenu()
@@ -273,16 +278,13 @@ void OvEditor::Panels::MenuBar::CreateHelpMenu()
 	auto& helpMenu = CreateWidget<MenuList>("Help");
 	helpMenu.CreateWidget<MenuItem>("GitHub").ClickedEvent += [repoURL] {OvTools::Utils::SystemCalls::OpenURL(repoURL); };
 	helpMenu.CreateWidget<MenuItem>("Wiki").ClickedEvent += [repoURL] {OvTools::Utils::SystemCalls::OpenURL(repoURL + "/wiki"); };
-	helpMenu.CreateWidget<MenuItem>("API Reference").ClickedEvent += [repoURL] {
-		// FIXME: Workaround to be removed once the version following 1.8 is released.
-		// This ensures the first few commits before the next release still have the "API Reference"
-		// button point to a valid URL.
-		const std::string tag =
-			std::string(OVERLOAD_VERSION) == "1.8" ?
-			"main" :
-			"v" + std::string(OVERLOAD_VERSION);
+	helpMenu.CreateWidget<MenuItem>("Lua Reference").ClickedEvent += [] {
+		const std::filesystem::path luaDefinitions = EDITOR_CONTEXT(engineAssetsPath) / "Lua";
+		if (!EDITOR_EXEC(OpenInCodeEditor(luaDefinitions)))
+		{
+			OvTools::Utils::SystemCalls::ShowInExplorer(luaDefinitions.string());
 
-		OvTools::Utils::SystemCalls::OpenURL(repoURL + std::format("/tree/{}/API", tag));
+		}
 	};
 	helpMenu.CreateWidget<Visual::Separator>();
 	helpMenu.CreateWidget<MenuItem>("Bug Report").ClickedEvent += [repoURL] {OvTools::Utils::SystemCalls::OpenURL(repoURL + "/issues/new?assignees=&labels=Bug&template=bug_report.md&title="); };

@@ -256,7 +256,19 @@ namespace OvEditor::Core
 		* Save every materials to their respective files
 		*/
 		void SaveMaterials();
+
+		/**
+		* Regenerate project files for the scripting backend
+		*/
+		void RegenerateScriptingProjectFiles();
 		
+		/**
+		* Open the given path in the code editor.
+		* Returns true if the operation was successful
+		* @param p_path
+		*/
+		bool OpenInCodeEditor(const std::filesystem::path& p_path);
+
 		/**
 		* Import an asset
 		* @param p_initialDestinationDirectory
