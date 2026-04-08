@@ -295,10 +295,17 @@ namespace OvEditor::Core
 		std::string GetResourcePath(const std::string& p_path, bool p_isFromEngine = false);
 
 		/**
-		* Returns the script path of a file
+		* Returns the script path of a file (relative to projectAssetsPath, forward-slash separated)
 		* @param p_path
 		*/
 		std::string GetScriptPath(const std::string& p_path);
+
+		/**
+		* Migrates scripts from a legacy Scripts/ folder into Assets/Scripts/.
+		* If a Scripts/ folder is found in the project root, prompts the user and
+		* moves it into Assets/, updating all scene files accordingly.
+		*/
+		void MigrateScripts();
 
 		/**
 		* Propagate the folder rename everywhere (Resource manager, scenes, materials...)
@@ -312,13 +319,6 @@ namespace OvEditor::Core
 		* @param p_folderPath
 		*/
 		void PropagateFolderDestruction(std::string p_folderPath);
-
-		/**
-		* Propagate the script rename in scenes and inspector
-		* @param p_previousName
-		* @param p_newName
-		*/
-		void PropagateScriptRename(std::string p_previousName, std::string p_newName);
 
 		/**
 		* Propagate the file rename everywhere it is used

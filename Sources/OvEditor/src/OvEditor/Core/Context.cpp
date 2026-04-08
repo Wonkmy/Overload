@@ -70,7 +70,6 @@ OvEditor::Core::Context::Context(const std::filesystem::path& p_projectFolder) :
 	projectFile(Utils::ProjectManagement::GetProjectFile(p_projectFolder)),
 	engineAssetsPath(std::filesystem::current_path() / "Data" / "Engine"),
 	projectAssetsPath(projectFolder / "Assets"),
-	projectScriptsPath(projectFolder / "Scripts"),
 	editorAssetsPath(std::filesystem::current_path() / "Data" / "Editor"),
 	sceneManager(projectAssetsPath.string()),
 	projectSettings(projectFile.string())
@@ -149,7 +148,7 @@ OvEditor::Core::Context::Context(const std::filesystem::path& p_projectFolder) :
 
 	/* Scripting */
 	scriptEngine = std::make_unique<OvCore::Scripting::ScriptEngine>(
-		projectScriptsPath,
+		projectAssetsPath,
 		engineAssetsPath
 	);
 
@@ -157,6 +156,7 @@ OvEditor::Core::Context::Context(const std::filesystem::path& p_projectFolder) :
 	// If Overload's installation directory changes, references to engine symbols would be lost,
 	// hence this invocation.
 	scriptEngine->CreateProjectFiles(
+		projectFolder,
 		Settings::EditorSettings::RegenerateScriptingProjectFilesOnStartup
 	);
 

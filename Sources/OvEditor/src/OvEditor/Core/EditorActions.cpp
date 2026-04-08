@@ -283,36 +283,19 @@ void OvEditor::Core::EditorActions::BuildAtLocation(const std::string & p_config
 						OVLOG_INFO("Data/User/Assets/ directory copied");
 
 						std::filesystem::copy(
-							m_context.projectScriptsPath,
-							p_buildPath / "Data" / "User" / "Scripts",
+							m_context.engineAssetsPath,
+							p_buildPath / "Data" / "Engine",
 							std::filesystem::copy_options::recursive,
 							err
 						);
 
 						if (!err)
 						{
-							OVLOG_INFO("Data/User/Scripts/ directory copied");
-
-							std::filesystem::copy(
-								m_context.engineAssetsPath,
-								p_buildPath / "Data" / "Engine",
-								std::filesystem::copy_options::recursive,
-								err
-							);
-
-							if (!err)
-							{
-								OVLOG_INFO("Data/Engine/ directory copied");
-							}
-							else
-							{
-								OVLOG_ERROR("Data/Engine/ directory failed to copy");
-								failed = true;
-							}
+							OVLOG_INFO("Data/Engine/ directory copied");
 						}
 						else
 						{
-							OVLOG_ERROR("Data/User/Scripts/ directory failed to copy");
+							OVLOG_ERROR("Data/Engine/ directory failed to copy");
 							failed = true;
 						}
 					}
@@ -751,7 +734,7 @@ void OvEditor::Core::EditorActions::SaveMaterials()
 
 void OvEditor::Core::EditorActions::RegenerateScriptingProjectFiles()
 {
-	if (m_context.scriptEngine->CreateProjectFiles(true))
+	if (m_context.scriptEngine->CreateProjectFiles(m_context.projectFolder, true))
 	{
 		OVLOG_INFO("Lua symbol regenerated (.luarc.json created)");
 	}
@@ -800,14 +783,16 @@ bool OvEditor::Core::EditorActions::ImportAsset(const std::string& p_initialDest
 	std::string shaderFormats = "*.ovfx;";
 	std::string shaderPartFormats = "*.ovfxh;";
 	std::string soundFormats = "*.mp3;*.ogg;*.wav;";
+	std::string scriptFormats = "*.lua;";
 
 	OpenFileDialog selectAssetDialog("Select an asset to import");
-	selectAssetDialog.AddFileType("Any supported format", modelFormats + textureFormats + shaderFormats + shaderPartFormats + soundFormats);
+	selectAssetDialog.AddFileType("Any supported format", modelFormats + textureFormats + shaderFormats + shaderPartFormats + soundFormats + scriptFormats);
 	selectAssetDialog.AddFileType("Model (.fbx, .obj)", modelFormats);
 	selectAssetDialog.AddFileType("Texture (.png, .jpeg, .jpg, .tga, .hdr)", textureFormats);
 	selectAssetDialog.AddFileType("Shader (.ovfx)", shaderFormats);
 	selectAssetDialog.AddFileType("Shader Parts (.ovfxh)", shaderPartFormats);
 	selectAssetDialog.AddFileType("Sound (.mp3, .ogg, .wav)", soundFormats);
+	selectAssetDialog.AddFileType("Script (.lua)", scriptFormats);
 	selectAssetDialog.Show();
 
 	if (selectAssetDialog.HasSucceeded())
@@ -846,14 +831,16 @@ bool OvEditor::Core::EditorActions::ImportAssetAtLocation(const std::string& p_d
 	std::string shaderFormats = "*.ovfx;";
 	std::string shaderPartFormats = "*.ovfxh;";
 	std::string soundFormats = "*.mp3;*.ogg;*.wav;";
+	std::string scriptFormats = "*.lua;";
 
 	OpenFileDialog selectAssetDialog("Select an asset to import");
-	selectAssetDialog.AddFileType("Any supported format", modelFormats + textureFormats + shaderFormats + soundFormats);
+	selectAssetDialog.AddFileType("Any supported format", modelFormats + textureFormats + shaderFormats + soundFormats + scriptFormats);
 	selectAssetDialog.AddFileType("Model (.fbx, .obj)", modelFormats);
 	selectAssetDialog.AddFileType("Texture (.png, .jpeg, .jpg, .tga, .hdr)", textureFormats);
 	selectAssetDialog.AddFileType("Shader (.ovfx)", shaderFormats);
 	selectAssetDialog.AddFileType("Shader Parts (.ovfxh)", shaderPartFormats);
 	selectAssetDialog.AddFileType("Sound (.mp3, .ogg, .wav)", soundFormats);
+	selectAssetDialog.AddFileType("Script (.lua)", scriptFormats);
 	selectAssetDialog.Show();
 
 	if (selectAssetDialog.HasSucceeded())
@@ -915,20 +902,15 @@ std::string OvEditor::Core::EditorActions::GetScriptPath(const std::string & p_p
 {
 	std::string result = p_path;
 
-	OvTools::Utils::String::Replace(result, m_context.projectScriptsPath.string(), "");
+	OvTools::Utils::String::Replace(result, m_context.projectAssetsPath.string(), "");
 
 	if (result.starts_with(std::filesystem::path::preferred_separator))
 	{
 		result = result.substr(1);
 	}
 
-	for (auto& extension : OVSERVICE(OvCore::Scripting::ScriptEngine).GetValidExtensions())
-	{
-		if (result.ends_with(extension))
-		{
-			result = result.substr(0, result.size() - extension.size());
-		}
-	}
+	// Normalize to forward slashes for cross-platform consistency
+	std::replace(result.begin(), result.end(), '\\', '/');
 
 	return result;
 }
@@ -952,7 +934,10 @@ void OvEditor::Core::EditorActions::PropagateFolderRename(std::string p_previous
 					previousFileName = p_previousName;
 			}
 
-			PropagateFileRename(OvTools::Utils::PathParser::MakeWindowsStyle(previousFileName), OvTools::Utils::PathParser::MakeWindowsStyle(newFileName));
+			PropagateFileRename(
+				OvTools::Utils::PathParser::MakeWindowsStyle(previousFileName),
+				OvTools::Utils::PathParser::MakeWindowsStyle(newFileName)
+			);
 		}
 	}
 }
@@ -968,19 +953,62 @@ void OvEditor::Core::EditorActions::PropagateFolderDestruction(std::string p_fol
 	}
 }
 
-void OvEditor::Core::EditorActions::PropagateScriptRename(std::string p_previousName, std::string p_newName)
+void OvEditor::Core::EditorActions::MigrateScripts()
 {
-	p_previousName = GetScriptPath(p_previousName);
-	p_newName = GetScriptPath(p_newName);
+	const auto legacyScriptsPath = m_context.projectFolder / "Scripts";
 
-	if (auto currentScene = m_context.sceneManager.GetCurrentScene())
-		for (auto actor : currentScene->GetActors())
-			if (actor->RemoveBehaviour(p_previousName))
-				actor->AddBehaviour(p_newName);
+	if (!std::filesystem::exists(legacyScriptsPath) || !std::filesystem::is_directory(legacyScriptsPath))
+	{
+		return;
+	}
 
-	PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::SCENE);
+	using namespace OvWindowing::Dialogs;
 
-	EDITOR_PANEL(Panels::Inspector, "Inspector").Refresh();
+	MessageBox message(
+		"Legacy Scripts/ folder detected",
+		"A \"Scripts/\" folder was found in your project directory.\n\n"
+		"Scripts are now stored inside \"Assets/\" and support subdirectories.\n\n"
+		"Would you like to migrate your scripts to \"Assets/Scripts/\"?\n"
+		"All scene files referencing these scripts will be updated automatically.",
+		MessageBox::EMessageType::WARNING,
+		MessageBox::EButtonLayout::YES_NO,
+		true
+	);
+
+	if (message.GetUserAction() != MessageBox::EUserAction::YES)
+	{
+		return;
+	}
+
+	const auto targetPath = m_context.projectAssetsPath / "Scripts";
+
+	std::error_code err;
+	std::filesystem::rename(legacyScriptsPath, targetPath, err);
+
+	if (err)
+	{
+		OVLOG_ERROR("Failed to migrate Scripts/ folder: " + err.message());
+		return;
+	}
+
+	OVLOG_INFO("Scripts/ folder migrated to Assets/Scripts/");
+
+	// Update all scene files: replace old behaviour type (just the stem) with the new relative path
+	for (const auto& entry : std::filesystem::recursive_directory_iterator(targetPath))
+	{
+		if (!entry.is_directory())
+		{
+			if (OvTools::Utils::PathParser::GetFileType(entry.path().string()) == OvTools::Utils::PathParser::EFileType::SCRIPT)
+			{
+				const auto stem = entry.path().stem().string();
+				const auto newRelPath = (std::filesystem::path("Scripts") / entry.path().filename()).generic_string();
+
+				PropagateFileRenameThroughSavedFilesOfType(stem, newRelPath, OvTools::Utils::PathParser::EFileType::SCENE);
+			}
+		}
+	}
+
+	OVLOG_INFO("Scene files updated with new script paths");
 }
 
 void OvEditor::Core::EditorActions::PropagateFileRename(std::string p_previousName, std::string p_newName)
@@ -1110,6 +1138,33 @@ void OvEditor::Core::EditorActions::PropagateFileRename(std::string p_previousNa
 
 	switch (OvTools::Utils::PathParser::GetFileType(p_previousName))
 	{
+	case OvTools::Utils::PathParser::EFileType::SCRIPT:
+	{
+		// Normalize to forward slashes (Behaviour::name uses forward slashes as path separator)
+		std::string prev = p_previousName;
+		std::string next = p_newName;
+		std::replace(prev.begin(), prev.end(), '\\', '/');
+		if (next != "?") std::replace(next.begin(), next.end(), '\\', '/');
+
+		if (auto currentScene = m_context.sceneManager.GetCurrentScene())
+		{
+			for (auto actor : currentScene->GetActors())
+			{
+				if (actor->RemoveBehaviour(prev) && next != "?")
+				{
+					actor->AddBehaviour(next);
+				}
+			}
+		}
+
+		if (next != "?")
+		{
+			PropagateFileRenameThroughSavedFilesOfType(prev, next, OvTools::Utils::PathParser::EFileType::SCENE);
+		}
+
+		EDITOR_PANEL(Panels::Inspector, "Inspector").Refresh();
+		break;
+	}
 	case OvTools::Utils::PathParser::EFileType::MATERIAL:
 		PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::SCENE);
 		break;
