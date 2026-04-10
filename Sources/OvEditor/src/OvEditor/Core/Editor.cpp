@@ -10,7 +10,7 @@
 
 #include <OvEditor/Core/Editor.h>
 #include <OvEditor/Panels/AssetBrowser.h>
-#include <OvEditor/Panels/AssetPicker.h>
+#include <OvEditor/Panels/ItemPicker.h>
 #include <OvEditor/Panels/AssetProperties.h>
 #include <OvEditor/Panels/AssetView.h>
 #include <OvEditor/Panels/Console.h>
@@ -79,17 +79,16 @@ void OvEditor::Core::Editor::SetupUI()
 	m_canvas.MakeDockspace(true);
 	m_context.uiManager->SetCanvas(m_canvas);
 
-	m_assetPicker = std::make_unique<OvEditor::Panels::AssetPicker>(
-		"Asset Picker",
+	m_itemPicker = std::make_unique<OvEditor::Panels::ItemPicker>(
 		false,
 		OvUI::Settings::PanelWindowSettings{ .closable = true }
 	);
 
-	m_canvas.AddPanel(*m_assetPicker);
+	m_canvas.AddPanel(*m_itemPicker);
 
-	OvCore::Helpers::GUIDrawer::SetAssetPickerProvider(
-		[this](OvTools::Utils::PathParser::EFileType p_type, std::function<void(std::string)> p_callback) {
-			m_assetPicker->Open(p_type, std::move(p_callback));
+	OvCore::Helpers::GUIDrawer::SetPickerProvider(
+		[this](OvCore::Helpers::GUIDrawer::PickerItemList p_items, std::string p_title) {
+			m_itemPicker->Open(std::move(p_items), std::move(p_title));
 		}
 	);
 }
