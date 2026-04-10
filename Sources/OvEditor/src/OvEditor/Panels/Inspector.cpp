@@ -358,7 +358,11 @@ void OvEditor::Panels::Inspector::_UpdateAddScriptButton()
 	const auto realScriptPath = EDITOR_CONTEXT(projectAssetsPath) / m_selectedScript;
 
 	const bool canAdd =
+		OVSERVICE(OvCore::Scripting::ScriptEngine).GetValidExtensions().contains(
+			realScriptPath.extension().string()
+		) &&
 		std::filesystem::exists(realScriptPath) &&
+		std::filesystem::is_regular_file(realScriptPath) &&
 		!m_targetActor->GetBehaviour(m_selectedScript);
 
 	m_addScriptButton->disabled = !canAdd;
