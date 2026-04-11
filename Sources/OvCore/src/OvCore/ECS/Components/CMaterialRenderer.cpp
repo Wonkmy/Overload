@@ -154,6 +154,8 @@ void OvCore::ECS::Components::CMaterialRenderer::OnInspector(OvUI::Internal::Wid
 	using namespace OvCore::Helpers;
 	using enum Rendering::EVisibilityFlags;
 
+	m_inspectorRoot = &p_root;
+
 	for (auto& materialField : m_materialFields)
 	{
 		materialField.fill(nullptr);
@@ -213,6 +215,10 @@ void OvCore::ECS::Components::CMaterialRenderer::UpdateMaterialList()
 
 	for (uint8_t i = 0; i < m_materialFields.size(); ++i)
 	{
+		// If the slot became active but has no widget yet, create it now.
+		if (!m_materialFields[i][0] && !m_materialNames[i].empty() && m_inspectorRoot)
+			m_materialFields[i] = CustomMaterialDrawer(*m_inspectorRoot, "Material", m_materials[i]);
+
 		if (m_materialFields[i][0])
 		{
 			const bool enabled = !m_materialNames[i].empty();
