@@ -64,8 +64,26 @@ void ItemPicker::_Draw_Impl()
 		m_usePivotAnchor = false;
 	}
 	PanelWindow::_Draw_Impl();
-	if (IsOpened() && IsFocused() && ImGui::IsKeyPressed(ImGuiKey_Escape))
-		Close();
+	if (IsOpened() && IsFocused())
+	{
+		if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+		{
+			Close();
+		}
+		else if (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter))
+		{
+			const auto& items = m_items.Items();
+			for (size_t i = 0; i < m_rows.size() && i < items.size(); ++i)
+			{
+				if (m_rows[i].second->enabled)
+				{
+					items[i].onSelected();
+					Close();
+					break;
+				}
+			}
+		}
+	}
 }
 
 void ItemPicker::Open(OvCore::Helpers::GUIDrawer::PickerItemList p_items, std::string p_title)
@@ -86,13 +104,17 @@ void ItemPicker::Open(OvCore::Helpers::GUIDrawer::PickerItemList p_items, std::s
 	const bool placeBelow = spaceBelow >= spaceAbove;
 
 	// Constrain the picker height so it never clips off-screen.
-	// Use a large but positive x value so the height-only constraint is respected.
-	maxSize = { 10000.f, placeBelow ? spaceBelow : spaceAbove };
+	maxSize.y = placeBelow ? spaceBelow : spaceAbove;
 
+	// Try to align the left edge with the button, then clamp so the right
+	// side of the minimum-width window stays within the display, and the
+	// left side doesn't go negative.
 	float x = buttonMin.x;
-	if (x + minSize.x > display.x)
-		x = buttonMax.x - minSize.x;
+	x = std::min(x, display.x - minSize.x);
 	x = std::max(0.f, x);
+
+	// Constrain horizontal growth so the window can never overflow the right edge.
+	maxSize.x = display.x - x;
 
 	if (placeBelow)
 	{
