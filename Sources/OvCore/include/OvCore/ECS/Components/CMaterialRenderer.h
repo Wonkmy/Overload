@@ -154,6 +154,7 @@ namespace OvCore::ECS::Components
 		std::array<std::string, kMaxMaterialCount> m_materialNames;
 		OvMaths::FMatrix4 m_userMatrix;
 		Rendering::EVisibilityFlags m_visibilityFlags = Rendering::EVisibilityFlags::ALL;
+		OvUI::Internal::WidgetContainer* m_inspectorRoot = nullptr;
 	};
 
 	template<>
