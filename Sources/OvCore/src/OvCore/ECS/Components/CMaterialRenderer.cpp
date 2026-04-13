@@ -154,6 +154,13 @@ void OvCore::ECS::Components::CMaterialRenderer::OnInspector(OvUI::Internal::Wid
 	using namespace OvCore::Helpers;
 	using enum Rendering::EVisibilityFlags;
 
+	m_inspectorRoot = &p_root;
+
+	for (auto& materialField : m_materialFields)
+	{
+		materialField.fill(nullptr);
+	}
+
 	auto drawVisibilityToggle = [this, &p_root](const std::string& p_flagName, Rendering::EVisibilityFlags p_flag) {
 		GUIDrawer::DrawBoolean(
 			p_root,
@@ -171,9 +178,15 @@ void OvCore::ECS::Components::CMaterialRenderer::OnInspector(OvUI::Internal::Wid
 	drawVisibilityToggle("Shadow", SHADOW);
 
 	p_root.CreateWidget<OvUI::Widgets::Visual::Separator>();
-	p_root.CreateWidget<OvUI::Widgets::Layout::Dummy>(); // Necessary to fill the "value" column
 
-	for (uint8_t i = 0; i < m_materials.size(); ++i)
+	uint8_t materialCount = 0;
+
+	if (auto modelRenderer = owner.GetComponent<CModelRenderer>(); modelRenderer && modelRenderer->GetModel())
+	{
+		materialCount = static_cast<uint8_t>(std::min(modelRenderer->GetModel()->GetMaterialNames().size(), static_cast<size_t>(kMaxMaterialCount)));
+	}
+
+	for (uint8_t i = 0; i < materialCount; ++i)
 	{
 		m_materialFields[i] = CustomMaterialDrawer(p_root, "Material", m_materials[i]);
 	}
@@ -195,9 +208,17 @@ void OvCore::ECS::Components::CMaterialRenderer::UpdateMaterialList()
 		for (uint8_t i = materialIndex; i < kMaxMaterialCount; ++i)
 			m_materialNames[i] = "";
 	}
+	else
+	{
+		m_materialNames.fill("");
+	}
 
 	for (uint8_t i = 0; i < m_materialFields.size(); ++i)
 	{
+		// If the slot became active but has no widget yet, create it now.
+		if (!m_materialFields[i][0] && !m_materialNames[i].empty() && m_inspectorRoot)
+			m_materialFields[i] = CustomMaterialDrawer(*m_inspectorRoot, "Material", m_materials[i]);
+
 		if (m_materialFields[i][0])
 		{
 			const bool enabled = !m_materialNames[i].empty();
