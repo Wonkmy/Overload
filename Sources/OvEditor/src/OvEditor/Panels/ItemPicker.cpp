@@ -10,6 +10,9 @@
 #include <imgui.h>
 
 #include <OvEditor/Panels/ItemPicker.h>
+#include <OvEditor/Core/EditorActions.h>
+
+#include <OvCore/Helpers/GUIDrawer.h>
 
 #include <OvUI/Widgets/InputFields/InputText.h>
 #include <OvUI/Widgets/Layout/Group.h>
@@ -44,7 +47,13 @@ ItemPicker::ItemPicker(
 {
 	minSize = { 250.f, 250.f };
 
-	m_searchField = &CreateWidget<OvUI::Widgets::InputFields::InputText>("", "Search");
+	const uint32_t searchIconID = []{
+		if (auto* tex = EDITOR_CONTEXT(editorResources)->GetTexture("Search"))
+			return tex->GetTexture().GetID();
+		return 0u;
+	}();
+
+	m_searchField = &OvCore::Helpers::GUIDrawer::DrawSearchBar(*this, searchIconID);
 	m_searchField->ContentChangedEvent += [this](const std::string& p_text)
 	{
 		FilterList(p_text);
@@ -86,7 +95,7 @@ void ItemPicker::_Draw_Impl()
 	}
 }
 
-void ItemPicker::Open(OvCore::Helpers::GUIDrawer::PickerItemList p_items, std::string p_title)
+void ItemPicker::Open(OvCore::Helpers::GUIHelpers::PickerItemList p_items, std::string p_title)
 {
 	name = std::move(p_title);
 	m_items = std::move(p_items);
