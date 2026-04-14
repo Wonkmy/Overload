@@ -128,6 +128,12 @@ namespace
 		return p_path;
 	}
 
+	bool IsPathSameOrDescendant(const std::filesystem::path& p_path, const std::filesystem::path& p_ancestor)
+	{
+		const std::filesystem::path relativePath = p_path.lexically_normal().lexically_relative(p_ancestor.lexically_normal());
+		return !relativePath.empty() && *relativePath.begin() != "..";
+	}
+
 	class TexturePreview : public OvUI::Plugins::IPlugin
 	{
 	private:
@@ -969,6 +975,18 @@ void OvEditor::Panels::AssetBrowser::ConsiderItem(OvUI::Widgets::Layout::TreeNod
 				std::error_code equivalenceError;
 				if (std::filesystem::equivalent(folderReceivedPath, correctPath, equivalenceError))
 				{
+					return;
+				}
+
+				if (IsPathSameOrDescendant(correctPath, prevPath))
+				{
+					OVLOG_WARNING(
+						std::format(
+							"Cannot move folder \"{}\" to \"{}\" because the destination is inside the source folder.",
+							prevPath.string(),
+							correctPath.string()
+						)
+					);
 					return;
 				}
 
