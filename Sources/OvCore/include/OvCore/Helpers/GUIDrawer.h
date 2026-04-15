@@ -9,6 +9,8 @@
 #include <functional>
 #include <string>
 
+#include <OvTools/Utils/PathParser.h>
+
 #include <OvMaths/FVector2.h>
 #include <OvMaths/FVector3.h>
 #include <OvMaths/FVector4.h>
@@ -69,6 +71,13 @@ namespace OvCore::Helpers
 		static OvUI::Widgets::InputFields::AssetField& DrawMaterial(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvCore::Resources::Material*& p_data, OvTools::Eventing::Event<>* p_updateNotifier = nullptr);
 		static OvUI::Widgets::InputFields::AssetField& DrawSound(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvAudio::Resources::Sound*& p_data, OvTools::Eventing::Event<>* p_updateNotifier = nullptr);
 		static OvUI::Widgets::InputFields::AssetField& DrawAsset(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::string& p_data, OvTools::Eventing::Event<>* p_updateNotifier = nullptr);
+		static OvUI::Widgets::InputFields::AssetField& DrawAsset(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<std::string()> p_gatherer, std::function<void(std::string)> p_provider, OvTools::Utils::PathParser::EFileType p_fileType = OvTools::Utils::PathParser::EFileType::UNKNOWN);
+
+		/** Returns the display stem (filename without extension) for an asset path */
+		static std::string GetAssetDisplayName(const std::string& p_path);
+
+		/** Returns the friendly (project-relative) path for an asset, suitable as a tooltip */
+		static std::string GetAssetTooltip(const std::string& p_path);
 
 		static OvUI::Widgets::InputFields::AssetField& DrawScene(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<std::string()> p_gatherer, std::function<void(std::string)> p_provider);
 
@@ -88,6 +97,7 @@ namespace OvCore::Helpers
 		static void DrawQuat(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<OvMaths::FQuaternion(void)> p_gatherer, std::function<void(OvMaths::FQuaternion)> p_provider, float p_step = 1.f, float p_min = _MIN_FLOAT, float p_max = _MAX_FLOAT);
 		static void DrawDDString(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<std::string(void)> p_gatherer, std::function<void(std::string)> p_provider, const std::string& p_identifier);
 		static void DrawString(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<std::string(void)> p_gatherer, std::function<void(std::string)> p_provider);
+		static void DrawReadOnlyString(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<std::string(void)> p_gatherer);
 		static void DrawColor(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<OvUI::Types::Color(void)> p_gatherer, std::function<void(OvUI::Types::Color)> p_provider, bool p_hasAlpha = false);
 
 		template <typename T>

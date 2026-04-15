@@ -10,5 +10,5 @@
 
 namespace OvUI::Widgets::InputFields
 {
-	using AssetField = ObjectField<std::string>;
+	using ActorField = ObjectField<uint64_t>;
 }
