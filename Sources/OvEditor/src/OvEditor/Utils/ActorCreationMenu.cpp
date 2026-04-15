@@ -102,17 +102,13 @@ namespace
 		auto& modelRenderer = instance.AddComponent<OvCore::ECS::Components::CModelRenderer>();
 		auto& skinnedMeshRenderer = instance.AddComponent<OvCore::ECS::Components::CSkinnedMeshRenderer>();
 
-		auto material = EDITOR_CONTEXT(materialManager).GetResource(":Materials/Default.ovmat");
+		auto defaultMaterial = EDITOR_CONTEXT(materialManager).GetResource(":Materials/Default.ovmat");
 		auto mannequin = EDITOR_CONTEXT(modelManager).GetResource(":Models/Mannequin.fbx");
-
-		if (material)
-		{
-			materialRenderer.FillWithMaterial(*material);
-		}
 
 		if (mannequin)
 		{
 			modelRenderer.SetModel(mannequin);
+			materialRenderer.FillWithEmbeddedMaterials(true, defaultMaterial);
 		}
 
 		skinnedMeshRenderer.SetAnimation("root|idle");
