@@ -87,6 +87,13 @@ namespace OvCore::ECS::Components
 		void UpdateMaterialList();
 
 		/**
+		* Fill material entries using the embedded materials of the current model
+		* @param p_overwriteExisting
+		* @param p_fallbackMaterial
+		*/
+		void FillWithEmbeddedMaterials(bool p_overwriteExisting, OvCore::Resources::Material* p_fallbackMaterial = nullptr);
+
+		/**
 		* Defines an element of the user matrix
 		* @param p_row
 		* @param p_column

@@ -4,6 +4,7 @@
 * @licence: MIT
 */
 
+#include <algorithm>
 #include <format>
 #include <tinyxml2.h>
 
@@ -13,8 +14,10 @@
 #include <OvCore/Global/ServiceLocator.h>
 #include <OvCore/Helpers/GUIDrawer.h>
 #include <OvCore/ResourceManagement/MaterialManager.h>
+#include <OvRendering/Resources/Parsers/EmbeddedAssetPath.h>
 
 #include <OvUI/Widgets/Layout/Dummy.h>
+#include <OvUI/Widgets/InputFields/AssetField.h>
 #include <OvUI/Widgets/Texts/Text.h>
 #include <OvUI/Widgets/Visual/Separator.h>
 
@@ -226,6 +229,76 @@ void OvCore::ECS::Components::CMaterialRenderer::UpdateMaterialList()
 			m_materialFields[i][1]->enabled = enabled;
 			static_cast<OvUI::Widgets::Texts::Text*>(m_materialFields[i][0])->content =
 				std::format("Material [{}]: <{}>", i, m_materialNames[i]);
+			static_cast<OvUI::Widgets::InputFields::AssetField*>(m_materialFields[i][1])->content =
+				m_materials[i] ? m_materials[i]->path : std::string{};
+		}
+	}
+}
+
+void OvCore::ECS::Components::CMaterialRenderer::FillWithEmbeddedMaterials(bool p_overwriteExisting, OvCore::Resources::Material* p_fallbackMaterial)
+{
+	auto* modelRenderer = owner.GetComponent<CModelRenderer>();
+	if (!modelRenderer)
+	{
+		return;
+	}
+
+	const auto* model = modelRenderer->GetModel();
+	if (!model)
+	{
+		return;
+	}
+
+	auto& materialManager = Global::ServiceLocator::Get<ResourceManagement::MaterialManager>();
+
+	const uint8_t materialCount = static_cast<uint8_t>(std::min(
+		model->GetMaterialNames().size(),
+		static_cast<size_t>(kMaxMaterialCount)
+	));
+	const size_t embeddedMaterialCount = model->GetEmbeddedMaterials().size();
+
+	for (uint8_t i = 0; i < materialCount; ++i)
+	{
+		auto* currentMaterial = GetMaterialAtIndex(i);
+		const bool shouldOverride = p_overwriteExisting || !currentMaterial;
+		if (!shouldOverride)
+		{
+			continue;
+		}
+
+		if (i >= embeddedMaterialCount)
+		{
+			if (p_fallbackMaterial)
+			{
+				SetMaterialAtIndex(i, *p_fallbackMaterial);
+			}
+			else if (p_overwriteExisting)
+			{
+				RemoveMaterialAtIndex(i);
+			}
+			continue;
+		}
+
+		const auto embeddedMaterialPath = OvRendering::Resources::Parsers::MakeEmbeddedMaterialPath(model->path, i);
+		if (auto* embeddedMaterial = materialManager.GetResource(embeddedMaterialPath))
+		{
+			SetMaterialAtIndex(i, *embeddedMaterial);
+		}
+		else if (p_fallbackMaterial)
+		{
+			SetMaterialAtIndex(i, *p_fallbackMaterial);
+		}
+		else if (p_overwriteExisting)
+		{
+			RemoveMaterialAtIndex(i);
+		}
+	}
+
+	if (p_overwriteExisting)
+	{
+		for (uint8_t i = materialCount; i < kMaxMaterialCount; ++i)
+		{
+			RemoveMaterialAtIndex(i);
 		}
 	}
 }
