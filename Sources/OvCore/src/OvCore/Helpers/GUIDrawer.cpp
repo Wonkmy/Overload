@@ -5,14 +5,18 @@
 */
 
 #include <array>
+#include <filesystem>
 #include <memory>
 
 #include <OvTools/Utils/PathParser.h>
+
+#include <OvCore/Helpers/GUIHelpers.h>
 
 #include <OvUI/Widgets/Texts/TextColored.h>
 #include <OvUI/Widgets/Drags/DragSingleScalar.h>
 #include <OvUI/Widgets/Drags/DragMultipleScalars.h>
 #include <OvUI/Widgets/InputFields/InputText.h>
+#include <OvUI/Widgets/InputFields/AssetField.h>
 #include <OvUI/Widgets/Selection/ColorEdit.h>
 #include <OvUI/Widgets/Layout/Group.h>
 #include <OvUI/Widgets/Layout/Columns.h>
@@ -29,77 +33,10 @@
 #include <OvCore/ResourceManagement/SoundManager.h>
 
 #include "OvCore/Helpers/GUIDrawer.h"
-#include "OvUI/Widgets/Buttons/AButton.h"
 
 const OvUI::Types::Color OvCore::Helpers::GUIDrawer::TitleColor = { 0.85f, 0.65f, 0.0f };
 const float OvCore::Helpers::GUIDrawer::_MIN_FLOAT = -999999999.f;
 const float OvCore::Helpers::GUIDrawer::_MAX_FLOAT = +999999999.f;
-
-namespace
-{
-	OvRendering::Resources::Texture* __EMPTY_TEXTURE = nullptr;
-	OvCore::Helpers::GUIDrawer::FileItemBuilderCallback __FILE_ITEM_BUILDER;
-	OvCore::Helpers::GUIDrawer::PickerProviderCallback __PICKER_PROVIDER;
-
-	std::string TitleFromFileType(OvTools::Utils::PathParser::EFileType p_type)
-	{
-		using EFileType = OvTools::Utils::PathParser::EFileType;
-		switch (p_type)
-		{
-		case EFileType::MODEL:    return "Pick Model";
-		case EFileType::TEXTURE:  return "Pick Texture";
-		case EFileType::SHADER:   return "Pick Shader";
-		case EFileType::MATERIAL: return "Pick Material";
-		case EFileType::SOUND:    return "Pick Sound";
-		case EFileType::SCRIPT:   return "Pick Script";
-		default:                  return "Pick Asset";
-		}
-	}
-}
-
-void OvCore::Helpers::GUIDrawer::ProvideEmptyTexture(OvRendering::Resources::Texture& p_emptyTexture)
-{
-	__EMPTY_TEXTURE = &p_emptyTexture;
-}
-
-void OvCore::Helpers::GUIDrawer::SetFileItemBuilder(FileItemBuilderCallback p_builder)
-{
-	__FILE_ITEM_BUILDER = std::move(p_builder);
-}
-
-void OvCore::Helpers::GUIDrawer::OpenAssetPicker(
-	OvTools::Utils::PathParser::EFileType p_fileType,
-	std::function<void(std::string)> p_onSelect,
-	bool p_searchProjectFiles,
-	bool p_searchEngineFiles
-)
-{
-	if (!__FILE_ITEM_BUILDER || !__PICKER_PROVIDER)
-		return;
-
-	// Keep a copy so we can attach it to the None item before moving.
-	auto onSelectCopy = p_onSelect;
-	auto assetItems = __FILE_ITEM_BUILDER(p_fileType, std::move(p_onSelect), p_searchProjectFiles, p_searchEngineFiles);
-
-	// Build the final list with "None" at the top.
-	PickerItemList items;
-	items.Add({ "__none__", "None", "Clear the current selection", 0, [onSelectCopy] { onSelectCopy(""); } });
-	for (const auto& item : assetItems.Items())
-		items.Add(item);
-
-	__PICKER_PROVIDER(std::move(items), TitleFromFileType(p_fileType));
-}
-
-void OvCore::Helpers::GUIDrawer::SetPickerProvider(PickerProviderCallback p_provider)
-{
-	__PICKER_PROVIDER = std::move(p_provider);
-}
-
-void OvCore::Helpers::GUIDrawer::OpenPicker(PickerItemList p_items, std::string p_title)
-{
-	if (__PICKER_PROVIDER)
-		__PICKER_PROVIDER(std::move(p_items), std::move(p_title));
-}
 
 void OvCore::Helpers::GUIDrawer::CreateTitle(OvUI::Internal::WidgetContainer& p_root, const std::string & p_name)
 {
@@ -162,26 +99,46 @@ void OvCore::Helpers::GUIDrawer::DrawColor(OvUI::Internal::WidgetContainer & p_r
 	dispatcher.RegisterReference(p_color);
 }
 
+std::string OvCore::Helpers::GUIDrawer::GetAssetDisplayName(const std::string& p_path)
+{
+	const std::string friendly = OvTools::Utils::PathParser::GetFriendlyPath(p_path);
+	return friendly.empty() ? "" : std::filesystem::path(friendly).stem().string();
+}
+
+std::string OvCore::Helpers::GUIDrawer::GetAssetTooltip(const std::string& p_path)
+{
+	return OvTools::Utils::PathParser::GetFriendlyPath(p_path);
+}
+
 namespace
 {
+
+	/**
+	* Helper to attach an asset picker to a widget's click event.
+	* The picker will be available only if the callback is still alive when invoked.
+	*/
 	void AddSelectButton(
-		OvUI::Widgets::Buttons::AButton& p_button,
+		OvTools::Eventing::Event<>& p_clickedEvent,
 		OvTools::Utils::PathParser::EFileType p_fileType,
 		std::function<void(const std::string&)> p_onSelect)
 	{
 		auto token = std::make_shared<bool>(true);
-		p_button.ClickedEvent += [p_fileType, p_onSelect = std::move(p_onSelect), token = std::move(token)]
+		p_clickedEvent += [p_fileType, p_onSelect = std::move(p_onSelect), token = std::move(token)]
 		{
 			std::weak_ptr<bool> weak = token;
-			OvCore::Helpers::GUIDrawer::OpenAssetPicker(p_fileType, [p_onSelect, weak](const std::string& p_path)
+			OvCore::Helpers::GUIHelpers::OpenAssetPicker(p_fileType, [p_onSelect, weak](const std::string& p_path)
 			{
 				if (!weak.expired()) p_onSelect(p_path);
 			}, true, true);
 		};
 	}
 
+	/**
+	* Generic asset field widget for resources with drag-drop and file selection support.
+	* Handles resource loading via the service locator and optional change notifications.
+	*/
 	template<typename TResource, typename TResourceManager>
-	OvUI::Widgets::Texts::Text& DrawResourceWidget(
+	OvUI::Widgets::InputFields::AssetField& DrawResourceWidget(
 		OvUI::Internal::WidgetContainer& p_root,
 		const std::string& p_name,
 		TResource*& p_data,
@@ -190,38 +147,36 @@ namespace
 	{
 		OvCore::Helpers::GUIDrawer::CreateTitle(p_root, p_name);
 
-		std::string displayedText = (p_data ? p_data->path : std::string("Empty"));
-		auto& rightSide = p_root.CreateWidget<OvUI::Widgets::Layout::Group>();
-		rightSide.horizontal = true;
-		rightSide.stretchWidget = 0;
+		const std::string displayedText = p_data ? p_data->path : std::string{};
+		auto& widget = p_root.CreateWidget<OvUI::Widgets::InputFields::AssetField>(displayedText);
+		widget.iconTextureID = OvCore::Helpers::GUIHelpers::GetIconForFileType(p_fileType);
+		widget.displayFormatter = &OvCore::Helpers::GUIDrawer::GetAssetDisplayName;
+		widget.tooltipFormatter = &OvCore::Helpers::GUIDrawer::GetAssetTooltip;
 
-		auto& widget = rightSide.CreateWidget<OvUI::Widgets::Texts::Text>(displayedText);
+		// Create a shared widget reference for safe access in captured lambdas
+		auto widgetPtr = std::shared_ptr<OvUI::Widgets::InputFields::AssetField>(&widget, [](void*) {});
 
 		widget.AddPlugin<OvUI::Plugins::DDTarget<std::pair<std::string, OvUI::Widgets::Layout::Group*>>>("File").DataReceivedEvent +=
-			[&widget, &p_data, p_updateNotifier, p_fileType](auto p_receivedData)
+			[widgetPtr, &p_data, p_updateNotifier, p_fileType](auto p_receivedData)
 		{
 			if (OvTools::Utils::PathParser::GetFileType(p_receivedData.first) == p_fileType)
 			{
 				if (auto resource = OVSERVICE(TResourceManager).GetResource(p_receivedData.first); resource)
 				{
 					p_data = resource;
-					widget.content = p_receivedData.first;
+					widgetPtr->content = p_receivedData.first;
 					if (p_updateNotifier)
 						p_updateNotifier->Invoke();
 				}
 			}
 		};
 
-		widget.lineBreak = false;
-
-		auto& selectButton = rightSide.CreateWidget<OvUI::Widgets::Buttons::ButtonSmall>("...");
-		selectButton.lineBreak = false;
-		AddSelectButton(selectButton, p_fileType, [&widget, &p_data, p_updateNotifier](const std::string& p_path)
+		AddSelectButton(widget.ClickedEvent, p_fileType, [widgetPtr, &p_data, p_updateNotifier](const std::string& p_path)
 		{
 			if (p_path.empty())
 			{
 				p_data = nullptr;
-				widget.content = "Empty";
+				widgetPtr->content.clear();
 				if (p_updateNotifier)
 					p_updateNotifier->Invoke();
 				return;
@@ -229,56 +184,66 @@ namespace
 			if (auto resource = OVSERVICE(TResourceManager).GetResource(p_path); resource)
 			{
 				p_data = resource;
-				widget.content = p_path;
+				widgetPtr->content = p_path;
 				if (p_updateNotifier)
 					p_updateNotifier->Invoke();
 			}
 		});
 
+		widget.DoubleClickedEvent += [widgetPtr] { OvCore::Helpers::GUIHelpers::Open(widgetPtr->content); };
+
 		return widget;
 	}
 }
 
-OvUI::Widgets::Texts::Text& OvCore::Helpers::GUIDrawer::DrawMesh(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvRendering::Resources::Model*& p_data, OvTools::Eventing::Event<>* p_updateNotifier)
+OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawMesh(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvRendering::Resources::Model*& p_data, OvTools::Eventing::Event<>* p_updateNotifier)
 {
 	return DrawResourceWidget<OvRendering::Resources::Model, OvCore::ResourceManagement::ModelManager>(p_root, p_name, p_data, OvTools::Utils::PathParser::EFileType::MODEL, p_updateNotifier);
 }
 
-OvUI::Widgets::Visual::Image& OvCore::Helpers::GUIDrawer::DrawTexture(OvUI::Internal::WidgetContainer & p_root, const std::string & p_name, OvRendering::Resources::Texture *& p_data, OvTools::Eventing::Event<>* p_updateNotifier)
+OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawTexture(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvRendering::Resources::Texture*& p_data, OvTools::Eventing::Event<>* p_updateNotifier)
 {
 	CreateTitle(p_root, p_name);
 
-	std::string displayedText = (p_data ? p_data->path : std::string("Empty"));
-	auto& rightSide = p_root.CreateWidget<OvUI::Widgets::Layout::Group>();
-	rightSide.horizontal = true;
-	rightSide.stretchWidget = 0;
+	auto getPreviewID = [&]() -> uint32_t
+	{
+		if (p_data) return p_data->GetTexture().GetID();
+		auto* empty = GUIHelpers::GetEmptyTexture();
+		return empty ? empty->GetTexture().GetID() : 0;
+	};
 
-	auto& widget = rightSide.CreateWidget<OvUI::Widgets::Visual::Image>(p_data ? p_data->GetTexture().GetID() : (__EMPTY_TEXTURE ? __EMPTY_TEXTURE->GetTexture().GetID() : 0), OvMaths::FVector2{75, 75});
+	auto& widget = p_root.CreateWidget<OvUI::Widgets::InputFields::AssetField>(p_data ? p_data->path : std::string{});
+	widget.iconTextureID = GUIHelpers::GetIconForFileType(OvTools::Utils::PathParser::EFileType::TEXTURE);
+	widget.displayFormatter = &OvCore::Helpers::GUIDrawer::GetAssetDisplayName;
+	widget.tooltipFormatter = &OvCore::Helpers::GUIDrawer::GetAssetTooltip;
+	widget.previewTextureID = getPreviewID();
 
-	widget.AddPlugin<OvUI::Plugins::DDTarget<std::pair<std::string, OvUI::Widgets::Layout::Group*>>>("File").DataReceivedEvent += [&widget, &p_data, p_updateNotifier](auto p_receivedData)
+	// Create a shared widget reference for safe access in captured lambdas
+	auto widgetPtr = std::shared_ptr<OvUI::Widgets::InputFields::AssetField>(&widget, [](void*) {});
+
+	widget.AddPlugin<OvUI::Plugins::DDTarget<std::pair<std::string, OvUI::Widgets::Layout::Group*>>>("File").DataReceivedEvent +=
+		[widgetPtr, &p_data, p_updateNotifier, getPreviewID](auto p_receivedData)
 	{
 		if (OvTools::Utils::PathParser::GetFileType(p_receivedData.first) == OvTools::Utils::PathParser::EFileType::TEXTURE)
 		{
 			if (auto resource = OVSERVICE(OvCore::ResourceManagement::TextureManager).GetResource(p_receivedData.first); resource)
 			{
 				p_data = resource;
-				widget.textureID.id = resource->GetTexture().GetID();
+				widgetPtr->content = p_receivedData.first;
+				widgetPtr->previewTextureID = resource->GetTexture().GetID();
 				if (p_updateNotifier)
 					p_updateNotifier->Invoke();
 			}
 		}
 	};
 
-	widget.lineBreak = false;
-
-	auto& selectButton = rightSide.CreateWidget<OvUI::Widgets::Buttons::ButtonSmall>("...");
-	selectButton.lineBreak = false;
-	AddSelectButton(selectButton, OvTools::Utils::PathParser::EFileType::TEXTURE, [&widget, &p_data, p_updateNotifier](const std::string& p_path)
+	AddSelectButton(widget.ClickedEvent, OvTools::Utils::PathParser::EFileType::TEXTURE, [widgetPtr, &p_data, p_updateNotifier, getPreviewID](const std::string& p_path)
 	{
 		if (p_path.empty())
 		{
 			p_data = nullptr;
-			widget.textureID.id = (__EMPTY_TEXTURE ? __EMPTY_TEXTURE->GetTexture().GetID() : 0);
+			widgetPtr->content.clear();
+			widgetPtr->previewTextureID = getPreviewID();
 			if (p_updateNotifier)
 				p_updateNotifier->Invoke();
 			return;
@@ -286,60 +251,150 @@ OvUI::Widgets::Visual::Image& OvCore::Helpers::GUIDrawer::DrawTexture(OvUI::Inte
 		if (auto resource = OVSERVICE(OvCore::ResourceManagement::TextureManager).GetResource(p_path); resource)
 		{
 			p_data = resource;
-			widget.textureID.id = resource->GetTexture().GetID();
+			widgetPtr->content = p_path;
+			widgetPtr->previewTextureID = resource->GetTexture().GetID();
 			if (p_updateNotifier)
 				p_updateNotifier->Invoke();
 		}
 	});
 
+	widget.DoubleClickedEvent += [widgetPtr] { GUIHelpers::Open(widgetPtr->content); };
+
 	return widget;
 }
 
-OvUI::Widgets::Texts::Text& OvCore::Helpers::GUIDrawer::DrawShader(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvRendering::Resources::Shader*& p_data, OvTools::Eventing::Event<>* p_updateNotifier)
+OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawShader(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvRendering::Resources::Shader*& p_data, OvTools::Eventing::Event<>* p_updateNotifier)
 {
 	return DrawResourceWidget<OvRendering::Resources::Shader, OvCore::ResourceManagement::ShaderManager>(p_root, p_name, p_data, OvTools::Utils::PathParser::EFileType::SHADER, p_updateNotifier);
 }
 
-OvUI::Widgets::Texts::Text& OvCore::Helpers::GUIDrawer::DrawMaterial(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvCore::Resources::Material*& p_data, OvTools::Eventing::Event<>* p_updateNotifier)
+OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawMaterial(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvCore::Resources::Material*& p_data, OvTools::Eventing::Event<>* p_updateNotifier)
 {
 	return DrawResourceWidget<OvCore::Resources::Material, OvCore::ResourceManagement::MaterialManager>(p_root, p_name, p_data, OvTools::Utils::PathParser::EFileType::MATERIAL, p_updateNotifier);
 }
 
-OvUI::Widgets::Texts::Text& OvCore::Helpers::GUIDrawer::DrawSound(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvAudio::Resources::Sound*& p_data, OvTools::Eventing::Event<>* p_updateNotifier)
+OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawSound(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvAudio::Resources::Sound*& p_data, OvTools::Eventing::Event<>* p_updateNotifier)
 {
 	return DrawResourceWidget<OvAudio::Resources::Sound, OvCore::ResourceManagement::SoundManager>(p_root, p_name, p_data, OvTools::Utils::PathParser::EFileType::SOUND, p_updateNotifier);
 }
 
-OvUI::Widgets::Texts::Text& OvCore::Helpers::GUIDrawer::DrawAsset(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::string& p_data, OvTools::Eventing::Event<>* p_updateNotifier)
+OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawAsset(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::string& p_data, OvTools::Eventing::Event<>* p_updateNotifier)
 {
 	CreateTitle(p_root, p_name);
 
-	const std::string displayedText = (p_data.empty() ? std::string("Empty") : p_data);
-	auto& rightSide = p_root.CreateWidget<OvUI::Widgets::Layout::Group>();
-	rightSide.horizontal = true;
-	rightSide.stretchWidget = 0;
+	const std::string displayedText = p_data;
+	auto& widget = p_root.CreateWidget<OvUI::Widgets::InputFields::AssetField>(displayedText);
+	widget.displayFormatter = &OvCore::Helpers::GUIDrawer::GetAssetDisplayName;
+	widget.tooltipFormatter = &OvCore::Helpers::GUIDrawer::GetAssetTooltip;
 
-	auto& widget = rightSide.CreateWidget<OvUI::Widgets::Texts::Text>(displayedText);
+	// Create a shared widget reference for safe access in captured lambdas
+	auto widgetPtr = std::shared_ptr<OvUI::Widgets::InputFields::AssetField>(&widget, [](void*) {});
 
-	widget.AddPlugin<OvUI::Plugins::DDTarget<std::pair<std::string, OvUI::Widgets::Layout::Group*>>>("File").DataReceivedEvent += [&widget, &p_data, p_updateNotifier](auto p_receivedData)
+	widget.AddPlugin<OvUI::Plugins::DDTarget<std::pair<std::string, OvUI::Widgets::Layout::Group*>>>("File").DataReceivedEvent += [widgetPtr, &p_data, p_updateNotifier](auto p_receivedData)
 	{
 		p_data = p_receivedData.first;
-		widget.content = p_receivedData.first;
+		widgetPtr->content = p_receivedData.first;
 		if (p_updateNotifier)
 			p_updateNotifier->Invoke();
 	};
 
-	widget.lineBreak = false;
-
-	auto& selectButton = rightSide.CreateWidget<OvUI::Widgets::Buttons::ButtonSmall>("...");
-	selectButton.lineBreak = false;
-	AddSelectButton(selectButton, OvTools::Utils::PathParser::EFileType::UNKNOWN, [&widget, &p_data, p_updateNotifier](const std::string& p_path)
+	AddSelectButton(widget.ClickedEvent, OvTools::Utils::PathParser::EFileType::UNKNOWN, [widgetPtr, &p_data, p_updateNotifier](const std::string& p_path)
 	{
 		p_data = p_path;
-		widget.content = p_path.empty() ? "Empty" : p_path;
+		widgetPtr->content = p_path;
 		if (p_updateNotifier)
 			p_updateNotifier->Invoke();
 	});
+
+	widget.DoubleClickedEvent += [widgetPtr] { GUIHelpers::Open(widgetPtr->content); };
+
+	return widget;
+}
+
+OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawAsset(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<std::string()> p_gatherer, std::function<void(std::string)> p_provider, OvTools::Utils::PathParser::EFileType p_fileType)
+{
+	CreateTitle(p_root, p_name);
+
+	auto& widget = p_root.CreateWidget<OvUI::Widgets::InputFields::AssetField>(p_gatherer());
+	widget.iconTextureID = GUIHelpers::GetIconForFileType(p_fileType);
+	widget.displayFormatter = &OvCore::Helpers::GUIDrawer::GetAssetDisplayName;
+	widget.tooltipFormatter = &OvCore::Helpers::GUIDrawer::GetAssetTooltip;
+
+	auto widgetPtr = std::shared_ptr<OvUI::Widgets::InputFields::AssetField>(&widget, [](void*) {});
+
+	widget.AddPlugin<OvUI::Plugins::DataDispatcher<std::string>>().RegisterGatherer(p_gatherer);
+
+	widget.AddPlugin<OvUI::Plugins::DDTarget<std::pair<std::string, OvUI::Widgets::Layout::Group*>>>("File").DataReceivedEvent +=
+		[widgetPtr, p_provider, p_fileType](auto p_receivedData)
+	{
+		const bool fileTypeMatch = p_fileType == OvTools::Utils::PathParser::EFileType::UNKNOWN
+			|| OvTools::Utils::PathParser::GetFileType(p_receivedData.first) == p_fileType;
+
+		if (fileTypeMatch)
+		{
+			widgetPtr->content = p_receivedData.first;
+			p_provider(p_receivedData.first);
+		}
+	};
+
+	auto token = std::make_shared<bool>(true);
+	widget.ClickedEvent += [widgetPtr, p_provider, p_fileType, token]()
+	{
+		std::weak_ptr<bool> weak = token;
+		GUIHelpers::OpenAssetPicker(p_fileType, [widgetPtr, p_provider, weak](const std::string& p_path)
+		{
+			if (!weak.expired())
+			{
+				widgetPtr->content = p_path;
+				p_provider(p_path);
+			}
+		}, true, true);
+	};
+
+	widget.DoubleClickedEvent += [widgetPtr] { GUIHelpers::Open(widgetPtr->content); };
+
+	return widget;
+}
+
+OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawScene(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<std::string()> p_gatherer, std::function<void(std::string)> p_provider)
+{
+	CreateTitle(p_root, p_name);
+
+	auto& widget = p_root.CreateWidget<OvUI::Widgets::InputFields::AssetField>(p_gatherer());
+	widget.iconTextureID = GUIHelpers::GetIconForFileType(OvTools::Utils::PathParser::EFileType::SCENE);
+	widget.displayFormatter = &OvCore::Helpers::GUIDrawer::GetAssetDisplayName;
+	widget.tooltipFormatter = &OvCore::Helpers::GUIDrawer::GetAssetTooltip;
+
+	// Create a shared widget reference for safe access in captured lambdas
+	auto widgetPtr = std::shared_ptr<OvUI::Widgets::InputFields::AssetField>(&widget, [](void*) {});
+
+	widget.AddPlugin<OvUI::Plugins::DataDispatcher<std::string>>().RegisterGatherer(p_gatherer);
+
+	widget.AddPlugin<OvUI::Plugins::DDTarget<std::pair<std::string, OvUI::Widgets::Layout::Group*>>>("File").DataReceivedEvent +=
+		[widgetPtr, p_provider](auto p_receivedData)
+	{
+		if (OvTools::Utils::PathParser::GetFileType(p_receivedData.first) == OvTools::Utils::PathParser::EFileType::SCENE)
+		{
+			widgetPtr->content = p_receivedData.first;
+			p_provider(p_receivedData.first);
+		}
+	};
+
+	auto token = std::make_shared<bool>(true);
+	widget.ClickedEvent += [widgetPtr, p_provider, token]()
+	{
+		std::weak_ptr<bool> weak = token;
+		GUIHelpers::OpenAssetPicker(OvTools::Utils::PathParser::EFileType::SCENE, [widgetPtr, p_provider, weak](const std::string& p_path)
+		{
+			if (!weak.expired())
+			{
+				widgetPtr->content = p_path;
+				p_provider(p_path);
+			}
+		}, true, false);
+	};
+
+	widget.DoubleClickedEvent += [widgetPtr] { GUIHelpers::Open(widgetPtr->content); };
 
 	return widget;
 }
@@ -461,6 +516,15 @@ void OvCore::Helpers::GUIDrawer::DrawString(OvUI::Internal::WidgetContainer & p_
 	dispatcher.RegisterProvider(p_provider);
 }
 
+void OvCore::Helpers::GUIDrawer::DrawReadOnlyString(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<std::string(void)> p_gatherer)
+{
+	CreateTitle(p_root, p_name);
+	auto& widget = p_root.CreateWidget<OvUI::Widgets::InputFields::InputText>("");
+	widget.disabled = true;
+	auto& dispatcher = widget.AddPlugin<OvUI::Plugins::DataDispatcher<std::string>>();
+	dispatcher.RegisterGatherer(p_gatherer);
+}
+
 void OvCore::Helpers::GUIDrawer::DrawColor(OvUI::Internal::WidgetContainer & p_root, const std::string & p_name, std::function<OvUI::Types::Color(void)> p_gatherer, std::function<void(OvUI::Types::Color)> p_provider, bool p_hasAlpha)
 {
 	CreateTitle(p_root, p_name);
@@ -468,4 +532,12 @@ void OvCore::Helpers::GUIDrawer::DrawColor(OvUI::Internal::WidgetContainer & p_r
 	auto& dispatcher = widget.AddPlugin<OvUI::Plugins::DataDispatcher<OvUI::Types::Color>>();
 	dispatcher.RegisterGatherer(p_gatherer);
 	dispatcher.RegisterProvider(p_provider);
+}
+
+OvUI::Widgets::InputFields::InputText& OvCore::Helpers::GUIDrawer::DrawSearchBar(OvUI::Internal::WidgetContainer& p_root, uint32_t p_searchIconTextureID)
+{
+	auto& searchBar = p_root.CreateWidget<OvUI::Widgets::InputFields::InputText>();
+	searchBar.fullWidth = true;
+	searchBar.iconTextureID = p_searchIconTextureID;
+	return searchBar;
 }
