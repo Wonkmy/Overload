@@ -18,6 +18,7 @@
 #include "OvCore/ResourceManagement/TextureManager.h"
 #include "OvCore/ResourceManagement/MaterialManager.h"
 #include "OvCore/ResourceManagement/SoundManager.h"
+#include "OvCore/Scripting/Common/ScriptPropertyValue.h"
 
 #include <OvPhysics/Entities/PhysicalObject.h>
 
@@ -30,9 +31,37 @@ void BindLuaGlobal(sol::state& p_luaState)
 	using namespace OvWindowing;
 	using namespace OvWindowing::Inputs;
 	using namespace OvMaths;
+	using namespace OvCore::Scripting;
 	using namespace OvCore::ECS;
 	using namespace OvCore::SceneSystem;
 	using namespace OvCore::ResourceManagement;
+
+	// Asset reference type — used in script local tables to declare asset properties.
+	// The inspector renders an asset picker for any field initialised with one of the
+	// factory functions below (Model(), Texture(), Shader(), Material(), Sound()).
+	p_luaState.new_usertype<AssetRef>("AssetRef",
+		"path", &AssetRef::path
+	);
+
+	using EFT = OvTools::Utils::PathParser::EFileType;
+	p_luaState["Model"]    = []() { return AssetRef{EFT::MODEL,    ""}; };
+	p_luaState["Texture"]  = []() { return AssetRef{EFT::TEXTURE,  ""}; };
+	p_luaState["Shader"]   = []() { return AssetRef{EFT::SHADER,   ""}; };
+	p_luaState["Material"] = []() { return AssetRef{EFT::MATERIAL, ""}; };
+	p_luaState["Sound"]    = []() { return AssetRef{EFT::SOUND,    ""}; };
+
+	// ActorRef is a C++-only internal sentinel type. It is registered so that sol2 can
+	// identify it via is<ActorRef>() in GetDefaultProperties. The Lua-visible factory is
+	// named "Actor" (overrides the non-callable Actor usertype with a factory lambda) so
+	// scripts can write: actor = Actor()
+	// After the inspector resolves the field, self.actor becomes the real Actor*.
+	p_luaState.new_usertype<ActorRef>("_ActorRef",
+		"guid", &ActorRef::guid
+	);
+
+	// Override "Actor" global with a factory that returns a sentinel ActorRef{0}.
+	// The Actor metatable (registered by LuaActorBindings) remains intact on Actor* values.
+	p_luaState["Actor"] = []() { return ActorRef{0}; };
 
 	p_luaState.new_usertype<Scene>("Scene",
 		"FindActorByName", &Scene::FindActorByName,
