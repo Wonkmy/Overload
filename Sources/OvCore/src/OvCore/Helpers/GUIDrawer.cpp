@@ -5,6 +5,7 @@
 */
 
 #include <array>
+#include <filesystem>
 #include <memory>
 
 #include <OvTools/Utils/PathParser.h>
@@ -98,8 +99,20 @@ void OvCore::Helpers::GUIDrawer::DrawColor(OvUI::Internal::WidgetContainer & p_r
 	dispatcher.RegisterReference(p_color);
 }
 
+std::string OvCore::Helpers::GUIDrawer::GetAssetDisplayName(const std::string& p_path)
+{
+	const std::string friendly = OvTools::Utils::PathParser::GetFriendlyPath(p_path);
+	return friendly.empty() ? "" : std::filesystem::path(friendly).stem().string();
+}
+
+std::string OvCore::Helpers::GUIDrawer::GetAssetTooltip(const std::string& p_path)
+{
+	return OvTools::Utils::PathParser::GetFriendlyPath(p_path);
+}
+
 namespace
 {
+
 	/**
 	* Helper to attach an asset picker to a widget's click event.
 	* The picker will be available only if the callback is still alive when invoked.
@@ -137,6 +150,8 @@ namespace
 		const std::string displayedText = p_data ? p_data->path : std::string{};
 		auto& widget = p_root.CreateWidget<OvUI::Widgets::InputFields::AssetField>(displayedText);
 		widget.iconTextureID = OvCore::Helpers::GUIHelpers::GetIconForFileType(p_fileType);
+		widget.displayFormatter = &OvCore::Helpers::GUIDrawer::GetAssetDisplayName;
+		widget.tooltipFormatter = &OvCore::Helpers::GUIDrawer::GetAssetTooltip;
 
 		// Create a shared widget reference for safe access in captured lambdas
 		auto widgetPtr = std::shared_ptr<OvUI::Widgets::InputFields::AssetField>(&widget, [](void*) {});
@@ -199,6 +214,8 @@ OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawTexture(
 
 	auto& widget = p_root.CreateWidget<OvUI::Widgets::InputFields::AssetField>(p_data ? p_data->path : std::string{});
 	widget.iconTextureID = GUIHelpers::GetIconForFileType(OvTools::Utils::PathParser::EFileType::TEXTURE);
+	widget.displayFormatter = &OvCore::Helpers::GUIDrawer::GetAssetDisplayName;
+	widget.tooltipFormatter = &OvCore::Helpers::GUIDrawer::GetAssetTooltip;
 	widget.previewTextureID = getPreviewID();
 
 	// Create a shared widget reference for safe access in captured lambdas
@@ -267,6 +284,8 @@ OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawAsset(Ov
 
 	const std::string displayedText = p_data;
 	auto& widget = p_root.CreateWidget<OvUI::Widgets::InputFields::AssetField>(displayedText);
+	widget.displayFormatter = &OvCore::Helpers::GUIDrawer::GetAssetDisplayName;
+	widget.tooltipFormatter = &OvCore::Helpers::GUIDrawer::GetAssetTooltip;
 
 	// Create a shared widget reference for safe access in captured lambdas
 	auto widgetPtr = std::shared_ptr<OvUI::Widgets::InputFields::AssetField>(&widget, [](void*) {});
@@ -292,12 +311,59 @@ OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawAsset(Ov
 	return widget;
 }
 
+OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawAsset(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<std::string()> p_gatherer, std::function<void(std::string)> p_provider, OvTools::Utils::PathParser::EFileType p_fileType)
+{
+	CreateTitle(p_root, p_name);
+
+	auto& widget = p_root.CreateWidget<OvUI::Widgets::InputFields::AssetField>(p_gatherer());
+	widget.iconTextureID = GUIHelpers::GetIconForFileType(p_fileType);
+	widget.displayFormatter = &OvCore::Helpers::GUIDrawer::GetAssetDisplayName;
+	widget.tooltipFormatter = &OvCore::Helpers::GUIDrawer::GetAssetTooltip;
+
+	auto widgetPtr = std::shared_ptr<OvUI::Widgets::InputFields::AssetField>(&widget, [](void*) {});
+
+	widget.AddPlugin<OvUI::Plugins::DataDispatcher<std::string>>().RegisterGatherer(p_gatherer);
+
+	widget.AddPlugin<OvUI::Plugins::DDTarget<std::pair<std::string, OvUI::Widgets::Layout::Group*>>>("File").DataReceivedEvent +=
+		[widgetPtr, p_provider, p_fileType](auto p_receivedData)
+	{
+		const bool fileTypeMatch = p_fileType == OvTools::Utils::PathParser::EFileType::UNKNOWN
+			|| OvTools::Utils::PathParser::GetFileType(p_receivedData.first) == p_fileType;
+
+		if (fileTypeMatch)
+		{
+			widgetPtr->content = p_receivedData.first;
+			p_provider(p_receivedData.first);
+		}
+	};
+
+	auto token = std::make_shared<bool>(true);
+	widget.ClickedEvent += [widgetPtr, p_provider, p_fileType, token]()
+	{
+		std::weak_ptr<bool> weak = token;
+		GUIHelpers::OpenAssetPicker(p_fileType, [widgetPtr, p_provider, weak](const std::string& p_path)
+		{
+			if (!weak.expired())
+			{
+				widgetPtr->content = p_path;
+				p_provider(p_path);
+			}
+		}, true, true);
+	};
+
+	widget.DoubleClickedEvent += [widgetPtr] { GUIHelpers::Open(widgetPtr->content); };
+
+	return widget;
+}
+
 OvUI::Widgets::InputFields::AssetField& OvCore::Helpers::GUIDrawer::DrawScene(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<std::string()> p_gatherer, std::function<void(std::string)> p_provider)
 {
 	CreateTitle(p_root, p_name);
 
 	auto& widget = p_root.CreateWidget<OvUI::Widgets::InputFields::AssetField>(p_gatherer());
 	widget.iconTextureID = GUIHelpers::GetIconForFileType(OvTools::Utils::PathParser::EFileType::SCENE);
+	widget.displayFormatter = &OvCore::Helpers::GUIDrawer::GetAssetDisplayName;
+	widget.tooltipFormatter = &OvCore::Helpers::GUIDrawer::GetAssetTooltip;
 
 	// Create a shared widget reference for safe access in captured lambdas
 	auto widgetPtr = std::shared_ptr<OvUI::Widgets::InputFields::AssetField>(&widget, [](void*) {});
@@ -448,6 +514,15 @@ void OvCore::Helpers::GUIDrawer::DrawString(OvUI::Internal::WidgetContainer & p_
 	auto& dispatcher = widget.AddPlugin<OvUI::Plugins::DataDispatcher<std::string>>();
 	dispatcher.RegisterGatherer(p_gatherer);
 	dispatcher.RegisterProvider(p_provider);
+}
+
+void OvCore::Helpers::GUIDrawer::DrawReadOnlyString(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, std::function<std::string(void)> p_gatherer)
+{
+	CreateTitle(p_root, p_name);
+	auto& widget = p_root.CreateWidget<OvUI::Widgets::InputFields::InputText>("");
+	widget.disabled = true;
+	auto& dispatcher = widget.AddPlugin<OvUI::Plugins::DataDispatcher<std::string>>();
+	dispatcher.RegisterGatherer(p_gatherer);
 }
 
 void OvCore::Helpers::GUIDrawer::DrawColor(OvUI::Internal::WidgetContainer & p_root, const std::string & p_name, std::function<OvUI::Types::Color(void)> p_gatherer, std::function<void(OvUI::Types::Color)> p_provider, bool p_hasAlpha)

@@ -6,12 +6,7 @@
 
 #include <OvCore/ECS/Actor.h>
 #include <OvCore/ECS/Components/CModelRenderer.h>
-#include <OvCore/ECS/Components/CMaterialRenderer.h>
 #include <OvCore/ECS/Components/CSkinnedMeshRenderer.h>
-#include <OvCore/Global/ServiceLocator.h>
-#include <OvCore/ResourceManagement/ModelManager.h>
-#include <OvCore/ResourceManagement/ShaderManager.h>
-#include <OvCore/ResourceManagement/TextureManager.h>
 
 #include <OvUI/Plugins/DDTarget.h>
 #include <OvUI/Widgets/Drags/DragFloat.h>
@@ -23,11 +18,8 @@
 
 OvCore::ECS::Components::CModelRenderer::CModelRenderer(ECS::Actor& p_owner) : AComponent(p_owner)
 {
-	m_modelChangedEvent += [this]
+	m_modelChangedEvent += [this]()
 	{
-		if (auto materialRenderer = owner.GetComponent<CMaterialRenderer>())
-			materialRenderer->UpdateMaterialList();
-
 		if (auto skinnedMeshRenderer = owner.GetComponent<CSkinnedMeshRenderer>())
 			skinnedMeshRenderer->NotifyModelChanged();
 	};
@@ -87,6 +79,7 @@ void OvCore::ECS::Components::CModelRenderer::OnDeserialize(tinyxml2::XMLDocumen
 	OvRendering::Resources::Model* model = nullptr;
 	OvCore::Helpers::Serializer::DeserializeModel(p_doc, p_node, "model", model);
 	SetModel(model);
+
 	OvCore::Helpers::Serializer::DeserializeInt(p_doc, p_node, "frustum_behaviour", reinterpret_cast<int&>(m_frustumBehaviour));
 	OvCore::Helpers::Serializer::DeserializeVec3(p_doc, p_node, "custom_bounding_sphere_position", m_customBoundingSphere.position);
 	OvCore::Helpers::Serializer::DeserializeFloat(p_doc, p_node, "custom_bounding_sphere_radius", m_customBoundingSphere.radius);

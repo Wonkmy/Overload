@@ -4,6 +4,7 @@
 * @licence: MIT
 */
 
+#include <format>
 #include <limits>
 #include <utility>
 
@@ -13,15 +14,24 @@
 #include <OvCore/ECS/Components/Behaviour.h>
 #include <OvCore/Global/ServiceLocator.h>
 #include <OvCore/Helpers/GUIDrawer.h>
+#include <OvCore/Helpers/GUIHelpers.h>
 #include <OvCore/Scripting/ScriptEngine.h>
+
+#include <OvTools/Utils/PathParser.h>
 
 #include <OvDebug/Logger.h>
 
+#include <OvCore/SceneSystem/SceneManager.h>
+
 #include <OvUI/Plugins/DataDispatcher.h>
+#include <OvUI/Plugins/DDTarget.h>
 #include <OvUI/Widgets/Drags/DragSingleScalar.h>
+#include <OvUI/Widgets/InputFields/ActorField.h>
+#include <OvUI/Widgets/InputFields/AssetField.h>
 #include <OvUI/Widgets/InputFields/InputText.h>
 #include <OvUI/Widgets/Layout/Dummy.h>
 #include <OvUI/Widgets/Layout/Group.h>
+#include <OvUI/Widgets/Layout/TreeNode.h>
 #include <OvUI/Widgets/Selection/CheckBox.h>
 #include <OvUI/Widgets/Texts/TextColored.h>
 
@@ -183,6 +193,10 @@ void OvCore::ECS::Components::Behaviour::OnSerialize(tinyxml2::XMLDocument & p_d
 				{ elem->SetAttribute("type", "bool");   elem->SetText(v); }
 			else if constexpr (std::is_same_v<T, double>)
 				{ elem->SetAttribute("type", "number"); elem->SetText(v); }
+			else if constexpr (std::is_same_v<T, OvCore::Scripting::AssetRef>)
+				{ elem->SetAttribute("type", "asset"); elem->SetAttribute("assetType", OvTools::Utils::PathParser::FileTypeToString(v.fileType).c_str()); elem->SetText(v.path.c_str()); }
+			else if constexpr (std::is_same_v<T, OvCore::Scripting::ActorRef>)
+				{ elem->SetAttribute("type", "actor"); elem->SetText(std::to_string(v.guid).c_str()); }
 			else
 				{ elem->SetAttribute("type", "string"); elem->SetText(v.c_str()); }
 		}, fieldValue);
@@ -222,6 +236,22 @@ void OvCore::ECS::Components::Behaviour::OnDeserialize(tinyxml2::XMLDocument & p
 		}
 		else if (typeStr == "string" && std::holds_alternative<std::string>(val))
 			val = elem->GetText() ? elem->GetText() : "";
+		else if (typeStr == "asset" && std::holds_alternative<OvCore::Scripting::AssetRef>(val))
+		{
+			const char* assetTypeStr = elem->Attribute("assetType");
+			val = OvCore::Scripting::AssetRef{
+				assetTypeStr ? OvTools::Utils::PathParser::StringToFileType(assetTypeStr)
+				             : std::get<OvCore::Scripting::AssetRef>(val).fileType,
+				elem->GetText() ? elem->GetText() : ""
+			};
+		}
+		else if (typeStr == "actor" && std::holds_alternative<OvCore::Scripting::ActorRef>(val))
+		{
+			uint64_t guid = 0;
+			if (const char* text = elem->GetText())
+				guid = std::stoull(text);
+			val = OvCore::Scripting::ActorRef{guid};
+		}
 		else
 			continue;
 
@@ -289,6 +319,141 @@ void OvCore::ECS::Components::Behaviour::OnInspector(OvUI::Internal::WidgetConta
 					auto& d = w.template AddPlugin<OvUI::Plugins::DataDispatcher<double>>();
 					d.RegisterGatherer(getter);
 					d.RegisterProvider(setter);
+					inputPtr = &w;
+				}
+				else if constexpr (std::is_same_v<T, OvCore::Scripting::AssetRef>)
+				{
+					const auto fileType = getter().fileType;
+
+					auto pathGatherer = [getter]() { return getter().path; };
+					auto pathProvider = [setter, getter](std::string newPath) {
+						auto ref = getter();
+						ref.path = std::move(newPath);
+						setter(std::move(ref));
+					};
+
+					// Create the AssetField directly (without a GUIDrawer title, since the
+					// label row above already serves that purpose).
+					auto& w = p_root.CreateWidget<OvUI::Widgets::InputFields::AssetField>(pathGatherer());
+					w.iconTextureID = OvCore::Helpers::GUIHelpers::GetIconForFileType(fileType);
+					w.displayFormatter = &OvCore::Helpers::GUIDrawer::GetAssetDisplayName;
+					w.tooltipFormatter = &OvCore::Helpers::GUIDrawer::GetAssetTooltip;
+
+					auto widgetPtr = std::shared_ptr<OvUI::Widgets::InputFields::AssetField>(&w, [](void*) {});
+					w.template AddPlugin<OvUI::Plugins::DataDispatcher<std::string>>().RegisterGatherer(pathGatherer);
+
+					w.template AddPlugin<OvUI::Plugins::DDTarget<std::pair<std::string, OvUI::Widgets::Layout::Group*>>>("File").DataReceivedEvent +=
+						[widgetPtr, pathProvider, fileType](auto p_receivedData)
+					{
+						const bool typeMatch = fileType == OvTools::Utils::PathParser::EFileType::UNKNOWN
+							|| OvTools::Utils::PathParser::GetFileType(p_receivedData.first) == fileType;
+						if (typeMatch)
+						{
+							widgetPtr->content = p_receivedData.first;
+							pathProvider(p_receivedData.first);
+						}
+					};
+
+					auto token = std::make_shared<bool>(true);
+					w.ClickedEvent += [widgetPtr, pathProvider, fileType, token]()
+					{
+						std::weak_ptr<bool> weak = token;
+						OvCore::Helpers::GUIHelpers::OpenAssetPicker(fileType,
+							[widgetPtr, pathProvider, weak](const std::string& p_path)
+							{
+								if (!weak.expired())
+								{
+									widgetPtr->content = p_path;
+									pathProvider(p_path);
+								}
+							}, true, true);
+					};
+
+					w.DoubleClickedEvent += [widgetPtr] { OvCore::Helpers::GUIHelpers::Open(widgetPtr->content); };
+
+					inputPtr = &w;
+				}
+				else if constexpr (std::is_same_v<T, OvCore::Scripting::ActorRef>)
+				{
+					// Determine display name and tooltip from the scene.
+					auto resolveDisplayName = [](uint64_t guid) -> std::string {
+						if (guid == 0) return "";
+						auto* scene = OVSERVICE(OvCore::SceneSystem::SceneManager).GetCurrentScene();
+						auto* actor = scene ? scene->FindActorByGUID(guid) : nullptr;
+						return actor ? actor->GetName() : "(Missing)";
+					};
+
+					const OvCore::Scripting::ActorRef initial = getter();
+					auto& w = p_root.CreateWidget<OvUI::Widgets::InputFields::ActorField>(initial.guid);
+					w.iconTextureID = OvCore::Helpers::GUIHelpers::GetActorIconID();
+					w.displayFormatter = [resolveDisplayName](uint64_t guid) { return resolveDisplayName(guid); };
+					w.tooltipFormatter = [](uint64_t guid) -> std::string {
+						return guid != 0 ? std::format("GUID: {:016X}", guid) : "";
+					};
+
+					auto widgetPtr = std::shared_ptr<OvUI::Widgets::InputFields::ActorField>(&w, [](void*) {});
+
+					w.template AddPlugin<OvUI::Plugins::DataDispatcher<uint64_t>>().RegisterGatherer(
+						[getter]() -> uint64_t { return getter().guid; }
+					);
+
+					// Drag-drop: accept an actor dropped from the hierarchy.
+					using ActorPayload = std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::TreeNode*>;
+					w.template AddPlugin<OvUI::Plugins::DDTarget<ActorPayload>>("Actor").DataReceivedEvent +=
+						[widgetPtr, setter](ActorPayload p_payload)
+					{
+						if (p_payload.first)
+						{
+							widgetPtr->content = p_payload.first->GetGUID();
+							setter(OvCore::Scripting::ActorRef{widgetPtr->content});
+						}
+					};
+
+					// Double-click: select the referenced actor in the hierarchy.
+					w.DoubleClickedEvent += [widgetPtr]()
+					{
+						OvCore::Helpers::GUIHelpers::SelectActor(widgetPtr->content);
+					};
+
+					// Picker button: list all scene actors.
+					auto token = std::make_shared<bool>(true);
+					w.ClickedEvent += [widgetPtr, setter, token]()
+					{
+						auto* scene = OVSERVICE(OvCore::SceneSystem::SceneManager).GetCurrentScene();
+						if (!scene) return;
+
+						std::weak_ptr<bool> weak = token;
+						OvCore::Helpers::GUIHelpers::PickerItemList items;
+						items.Add({ "__none__", "None", "Clear the current selection", 0u,
+							[widgetPtr, setter, weak]()
+							{
+								if (weak.expired()) return;
+								widgetPtr->content = 0;
+								setter(OvCore::Scripting::ActorRef{0});
+							}
+						});
+						for (auto& actor : scene->GetActors())
+						{
+							const uint64_t guid = actor->GetGUID();
+							items.Add({
+								std::to_string(guid),
+								actor->GetName(),
+								"GUID: " + std::format("{:016X}", guid),
+								OvCore::Helpers::GUIHelpers::GetActorIconID(),
+								[widgetPtr, setter, guid, weak]()
+								{
+									if (!weak.expired())
+									{
+										widgetPtr->content = guid;
+										setter(OvCore::Scripting::ActorRef{guid});
+									}
+								}
+							});
+						}
+
+						OvCore::Helpers::GUIHelpers::OpenPicker(std::move(items), "Select Actor");
+					};
+
 					inputPtr = &w;
 				}
 				else
