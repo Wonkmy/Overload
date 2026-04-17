@@ -118,7 +118,7 @@ float OvCore::ECS::Components::CReflectionProbe::GetBrightness() const
 void OvCore::ECS::Components::CReflectionProbe::SetCubemapResolution(uint32_t p_resolution)
 {
 	OVASSERT(p_resolution > 0, "Cubemap resolution must be greater than 0");
-	OVASSERT((p_resolution & (p_resolution - 1)) == 0 > 0, "Cubemap resolution must be a power of 2");
+	OVASSERT((p_resolution & (p_resolution - 1)) == 0, "Cubemap resolution must be a power of 2");
 
 	if (p_resolution != m_resolution)
 	{
