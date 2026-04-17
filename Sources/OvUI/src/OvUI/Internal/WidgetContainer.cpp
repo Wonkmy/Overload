@@ -8,6 +8,7 @@
 #include <ranges>
 
 #include "OvUI/Internal/WidgetContainer.h"
+#include "imgui.h"
 
 OvUI::Internal::WidgetContainer::~WidgetContainer()
 {
