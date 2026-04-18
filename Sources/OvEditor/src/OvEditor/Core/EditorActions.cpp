@@ -794,10 +794,12 @@ void OvEditor::Core::EditorActions::DuplicateActor(OvCore::ECS::Actor & p_toDupl
 	p_toDuplicate.OnSerialize(doc, actorsRoot);
 	auto& newActor = CreateEmptyActor(false);
 	int64_t idToUse = newActor.GetID();
+	uint64_t guidToUse = newActor.GetGUID();
 	tinyxml2::XMLElement* currentActor = actorsRoot->FirstChildElement("actor");
 	newActor.OnDeserialize(doc, currentActor);
 	
 	newActor.SetID(idToUse);
+	newActor.SetGUID(guidToUse);
 
 	if (p_forcedParent)
 		newActor.SetParent(*p_forcedParent);
