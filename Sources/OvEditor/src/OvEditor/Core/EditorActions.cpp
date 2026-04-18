@@ -1195,7 +1195,8 @@ void OvEditor::Core::EditorActions::MigrateScripts()
 		"A \"Scripts/\" folder was found in your project directory.\n\n"
 		"Scripts are now stored inside \"Assets/\" and support subdirectories.\n\n"
 		"Would you like to migrate your scripts to \"Assets/Scripts/\"?\n"
-		"All scene files referencing these scripts will be updated automatically.",
+		"All scene files referencing these scripts will be updated automatically.\n\n"
+		"Note that any script already present in Assets/Scripts/ with the same name as a script in Scripts/ will be overridden.",
 		MessageBox::EMessageType::WARNING,
 		MessageBox::EButtonLayout::YES_NO,
 		true
