@@ -1207,9 +1207,66 @@ void OvEditor::Core::EditorActions::MigrateScripts()
 	}
 
 	const auto targetPath = m_context.projectAssetsPath / "Scripts";
+	std::vector<std::filesystem::path> migratedScriptNames;
+
+	for (const auto& entry : std::filesystem::recursive_directory_iterator(legacyScriptsPath))
+	{
+		if (!entry.is_directory())
+		{
+			if (OvTools::Utils::PathParser::GetFileType(entry.path().string()) == OvTools::Utils::PathParser::EFileType::SCRIPT)
+			{
+				migratedScriptNames.push_back(entry.path().filename());
+			}
+		}
+	}
 
 	std::error_code err;
-	std::filesystem::rename(legacyScriptsPath, targetPath, err);
+
+	if (!std::filesystem::exists(targetPath))
+	{
+		std::filesystem::rename(legacyScriptsPath, targetPath, err);
+	}
+	else if (std::filesystem::is_directory(targetPath))
+	{
+		std::filesystem::create_directories(targetPath, err);
+
+		if (!err)
+		{
+			for (const auto& entry : std::filesystem::recursive_directory_iterator(legacyScriptsPath))
+			{
+				const auto destination = targetPath / entry.path().lexically_relative(legacyScriptsPath);
+
+				if (entry.is_directory())
+				{
+					std::filesystem::create_directories(destination, err);
+				}
+				else
+				{
+					std::filesystem::create_directories(destination.parent_path(), err);
+
+					if (!err)
+					{
+						std::filesystem::copy_file(entry.path(), destination, std::filesystem::copy_options::overwrite_existing, err);
+					}
+				}
+
+				if (err)
+				{
+					break;
+				}
+			}
+		}
+
+		if (!err)
+		{
+			std::filesystem::remove_all(legacyScriptsPath, err);
+		}
+	}
+	else
+	{
+		OVLOG_ERROR("Failed to migrate Scripts/ folder: Assets/Scripts exists but is not a directory.");
+		return;
+	}
 
 	if (err)
 	{
@@ -1220,18 +1277,12 @@ void OvEditor::Core::EditorActions::MigrateScripts()
 	OVLOG_INFO("Scripts/ folder migrated to Assets/Scripts/");
 
 	// Update all scene files: replace old behaviour type (just the stem) with the new relative path
-	for (const auto& entry : std::filesystem::recursive_directory_iterator(targetPath))
+	for (const auto& scriptName : migratedScriptNames)
 	{
-		if (!entry.is_directory())
-		{
-			if (OvTools::Utils::PathParser::GetFileType(entry.path().string()) == OvTools::Utils::PathParser::EFileType::SCRIPT)
-			{
-				const auto stem = entry.path().stem().string();
-				const auto newRelPath = (std::filesystem::path("Scripts") / entry.path().filename()).generic_string();
+		const auto stem = scriptName.stem().string();
+		const auto newRelPath = (std::filesystem::path("Scripts") / scriptName).generic_string();
 
-				PropagateFileRenameThroughSavedFilesOfType(stem, newRelPath, OvTools::Utils::PathParser::EFileType::SCENE);
-			}
-		}
+		PropagateFileRenameThroughSavedFilesOfType(stem, newRelPath, OvTools::Utils::PathParser::EFileType::SCENE);
 	}
 
 	OVLOG_INFO("Scene files updated with new script paths");
