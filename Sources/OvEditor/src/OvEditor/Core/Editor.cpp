@@ -12,12 +12,14 @@
 #include <OvCore/Helpers/GUIDrawer.h>
 #include <OvCore/Helpers/GUIHelpers.h>
 
+#include <OvCore/ResourceManagement/MaterialManager.h>
 #include <OvCore/ResourceManagement/ModelManager.h>
 #include <OvCore/ResourceManagement/TextureManager.h>
-#include <OvCore/ResourceManagement/MaterialManager.h>
 
-#include <OvTools/Utils/SystemCalls.h>
+#include <OvRendering/Resources/Parsers/EmbeddedAssetPath.h>
+
 #include <OvTools/Utils/PathParser.h>
+#include <OvTools/Utils/SystemCalls.h>
 
 #include <OvEditor/Core/Editor.h>
 #include <OvEditor/Panels/AssetBrowser.h>
@@ -87,6 +89,8 @@ void OvEditor::Core::Editor::SetupUI()
 			using EFileType = OvTools::Utils::PathParser::EFileType;
 			const auto fileType = OvTools::Utils::PathParser::GetFileType(p_path);
 			const auto path = OvTools::Utils::PathParser::MakeNonWindowsStyle(p_path);
+			const auto embeddedAssetPath = ParseEmbeddedAssetPath(path);
+			const bool isEmbeddedTexture = embeddedAssetPath && ParseEmbeddedTextureIndex(embeddedAssetPath->assetName).has_value();
 
 			auto openInAssetView = [&](auto* p_resource)
 			{
@@ -97,7 +101,7 @@ void OvEditor::Core::Editor::SetupUI()
 				assetView.Focus();
 			};
 
-			if (fileType == EFileType::TEXTURE)
+			if (fileType == EFileType::TEXTURE || isEmbeddedTexture)
 			{
 				openInAssetView(OVSERVICE(TextureManager).GetResource(path));
 			}
