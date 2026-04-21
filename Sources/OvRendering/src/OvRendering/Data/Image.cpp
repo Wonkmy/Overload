@@ -14,11 +14,11 @@ OvRendering::Data::Image::Image(const std::filesystem::path& p_filepath)
 {
 	stbi_set_flip_vertically_on_load(true);
 
-	isHDR = stbi_is_hdr(p_filepath.c_str());
+	isHDR = stbi_is_hdr(p_filepath.string().c_str());
 
 	data = isHDR ?
-		static_cast<void*>(stbi_loadf(p_filepath.c_str(), &width, &height, &bpp, 4)) :
-		static_cast<void*>(stbi_load(p_filepath.c_str(), &width, &height, &bpp, 4));
+		static_cast<void*>(stbi_loadf(p_filepath.string().c_str(), &width, &height, &bpp, 4)) :
+		static_cast<void*>(stbi_load(p_filepath.string().c_str(), &width, &height, &bpp, 4));
 }
 
 OvRendering::Data::Image::Image(const uint8_t* p_data, const size_t p_size)
