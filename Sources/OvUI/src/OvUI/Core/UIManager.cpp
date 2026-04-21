@@ -4,8 +4,14 @@
 * @licence: MIT
 */
 
+#include "OvDebug/Logger.h"
+#include <OvDebug/Assertion.h>
 #include <OvUI/Core/UIManager.h>
 #include <OvUI/Styling/TStyle.h>
+#include <OvWindowing/Window.h>
+
+#include <imgui.h>
+#include <optional>
 
 namespace
 {
@@ -28,7 +34,8 @@ namespace
 	}
 }
 
-OvUI::Core::UIManager::UIManager(GLFWwindow* p_glfwWindow, Styling::EStyle p_style, std::string_view p_glslVersion)
+OvUI::Core::UIManager::UIManager(OvWindowing::Window& p_window, Styling::EStyle p_style, std::string_view p_glslVersion) :
+	m_window(p_window)
 {
 	ImGui::CreateContext();
 
@@ -37,12 +44,21 @@ OvUI::Core::UIManager::UIManager(GLFWwindow* p_glfwWindow, Styling::EStyle p_sty
 
 	ApplyStyle(p_style);
 	
-	ImGui_ImplGlfw_InitForOpenGL(p_glfwWindow, true);
+	ImGui_ImplGlfw_InitForOpenGL(m_window.GetGlfwWindow(), true);
 	ImGui_ImplOpenGL3_Init(p_glslVersion.data());
+
+	m_contentScaleChangedListener = m_window.ContentScaleChangedEvent += [this](float x, float y) {
+		if (m_dpiAware)
+		{
+			SetScale(); // Recompute scale based on content scale
+		}
+	};
 }
 
 OvUI::Core::UIManager::~UIManager()
 {
+	m_window.ContentScaleChangedEvent -= m_contentScaleChangedListener;
+
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
@@ -50,7 +66,11 @@ OvUI::Core::UIManager::~UIManager()
 
 void OvUI::Core::UIManager::ApplyStyle(Styling::EStyle p_style)
 {
-	ImGui::GetStyle() = GetStyle(p_style);
+	m_currentStyle = p_style;
+	auto style = GetStyle(p_style);
+	style.FontScaleMain = m_scale;
+	style.ScaleAllSizes(m_scale);
+	ImGui::GetStyle() = style;
 }
 
 bool OvUI::Core::UIManager::LoadFont(const std::string& p_id, const std::string & p_path, float p_fontSize)
@@ -97,6 +117,34 @@ bool OvUI::Core::UIManager::UseFont(const std::string & p_id)
 void OvUI::Core::UIManager::UseDefaultFont()
 {
 	ImGui::GetIO().FontDefault = nullptr;
+}
+
+void OvUI::Core::UIManager::SetScale(std::optional<float> p_scale)
+{
+	m_dpiAware = !p_scale.has_value();
+
+	if (m_dpiAware)
+	{
+		const auto contentScale = m_window.GetContentScale();
+		m_scale = std::max(contentScale.first, contentScale.second);
+	}
+	else
+	{
+		m_scale = p_scale.value();
+	}
+
+	if (m_scale < 1.0f)
+	{
+		OVLOG_WARNING("UI scale values lower than 1.0f are not supported!");
+		m_scale = 1.0f;
+	}
+
+	ApplyStyle(m_currentStyle);
+}
+
+float OvUI::Core::UIManager::GetScale() const
+{
+	return m_scale;
 }
 
 void OvUI::Core::UIManager::EnableEditorLayoutSave(bool p_value)
@@ -149,7 +197,7 @@ void OvUI::Core::UIManager::EnableDocking(bool p_value)
 
 void OvUI::Core::UIManager::ResetLayout(const std::string& p_config) const
 {
-    ImGui::LoadIniSettingsFromDisk(p_config.c_str());
+	ImGui::LoadIniSettingsFromDisk(p_config.c_str());
 }
 
 bool OvUI::Core::UIManager::IsDockingEnabled() const
@@ -178,12 +226,3 @@ void OvUI::Core::UIManager::Render()
 	}
 }
 
-void OvUI::Core::UIManager::PushCurrentFont()
-{
-
-}
-
-void OvUI::Core::UIManager::PopCurrentFont()
-{
-
-}

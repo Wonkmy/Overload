@@ -6,11 +6,18 @@
 
 #pragma once
 
+#include "OvTools/Eventing/Event.h"
+#include <optional>
 #include <string>
 #include <unordered_map>
 
-#include "OvUI/Modules/Canvas.h"
-#include "OvUI/Styling/EStyle.h"
+#include <OvUI/Modules/Canvas.h>
+#include <OvUI/Styling/EStyle.h>
+
+namespace OvWindowing
+{
+	class Window;
+}
 
 namespace OvUI::Core
 {
@@ -21,17 +28,17 @@ namespace OvUI::Core
 	{
 	public:
 		/**
-		* Create the UI manager. Will setup ImGui internally\
-		* @param p_glfwWindow
+		* Create the UI manager. Will setup ImGui internally
+		* @param p_window
 		* @param p_style
 		* @param p_glslVersion (Ex: #version 450)
 		*/
-		UIManager(GLFWwindow* p_glfwWindow, Styling::EStyle p_style = Styling::EStyle::IM_DARK_STYLE, std::string_view p_glslVersion = "#version 450");
+		UIManager(OvWindowing::Window& p_window, Styling::EStyle p_style = Styling::EStyle::IM_DARK_STYLE, std::string_view p_glslVersion = "#version 450");
 
 		/**
 		* Destroy the UI manager. Will handle ImGui destruction internally
 		*/
-		~UIManager();
+		virtual ~UIManager();
 
 		/**
 		* Apply a new style to the UI elements
@@ -62,6 +69,17 @@ namespace OvUI::Core
 		* Use the default font (ImGui default font)
 		*/
 		void UseDefaultFont();
+
+		/**
+		* Set the UI scale
+		* @param p_scale
+		*/
+		void SetScale(std::optional<float> p_scale = std::nullopt);
+
+		/**
+		* Returns the scale of the UI
+		*/
+		float GetScale() const;
 
 		/**
 		* Allow the user to enable/disable .ini generation to save his editor layout
@@ -96,11 +114,11 @@ namespace OvUI::Core
 		*/
 		void EnableDocking(bool p_value);
 
-        /**
-        * Reset the UI layout to the given configuration file
-        * @param p_config
-        */
-        void ResetLayout(const std::string & p_config) const;
+		/**
+		* Reset the UI layout to the given configuration file
+		* @param p_config
+		*/
+		void ResetLayout(const std::string & p_config) const;
 
 		/**
 		* Enable or disable mouse input in ImGui.
@@ -132,11 +150,13 @@ namespace OvUI::Core
 		void Render();
 
 	private:
-		void PushCurrentFont();
-		void PopCurrentFont();
-
-	private:
+		OvWindowing::Window& m_window;
+		OvTools::Eventing::ListenerID m_contentScaleChangedListener;
 		bool m_dockingState;
+		Styling::EStyle m_currentStyle;
+		float m_scale;
+		bool m_dpiAware;
+		bool m_refreshStyle = false;
 		Modules::Canvas* m_currentCanvas = nullptr;
 		std::unordered_map<std::string, ImFont*> m_fonts;
 		std::string m_layoutSaveFilename = "imgui.ini";
