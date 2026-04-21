@@ -4,79 +4,16 @@
 * @licence: MIT
 */
 
-#define STB_IMAGE_IMPLEMENTATION
-
 #include <array>
-#include <limits>
 #include <memory>
-#include <stb_image/stb_image.h>
 
 #include <OvDebug/Logger.h>
+#include <OvRendering/Data/Image.h>
 #include <OvRendering/Resources/Loaders/TextureLoader.h>
 #include <OvTools/Utils/PathParser.h>
 
 namespace
 {
-	/**
-	* Simple wrapper for stb_image. Handles SDR and HDR image loading,
-	* and enforces RAII for the loaded data.
-	*/
-	struct Image
-	{
-		int width = 0;
-		int height = 0;
-		int bpp = 0;
-		bool isHDR = false;
-		void* data = nullptr;
-
-		Image(const std::string& p_filepath)
-		{
-			stbi_set_flip_vertically_on_load(true);
-
-			isHDR = stbi_is_hdr(p_filepath.c_str());
-
-			data = isHDR ?
-				static_cast<void*>(stbi_loadf(p_filepath.c_str(), &width, &height, &bpp, 4)) :
-				static_cast<void*>(stbi_load(p_filepath.c_str(), &width, &height, &bpp, 4));
-		}
-
-		virtual ~Image() { stbi_image_free(data); }
-		bool IsValid() const { return data; }
-		operator bool() const { return IsValid(); }
-	};
-
-	/**
-	* Wrapper for stb_image when loading encoded image bytes from memory.
-	*/
-	struct EncodedImage
-	{
-		int width = 0;
-		int height = 0;
-		int bpp = 0;
-		bool isHDR = false;
-		void* data = nullptr;
-
-		EncodedImage(const uint8_t* p_data, const size_t p_size)
-		{
-			if (!p_data || p_size == 0 || p_size > static_cast<size_t>(std::numeric_limits<int>::max()))
-			{
-				return;
-			}
-
-			const int encodedSize = static_cast<int>(p_size);
-			stbi_set_flip_vertically_on_load(true);
-			isHDR = stbi_is_hdr_from_memory(p_data, encodedSize) != 0;
-
-			data = isHDR ?
-				static_cast<void*>(stbi_loadf_from_memory(p_data, encodedSize, &width, &height, &bpp, 4)) :
-				static_cast<void*>(stbi_load_from_memory(p_data, encodedSize, &width, &height, &bpp, 4));
-		}
-
-		virtual ~EncodedImage() { stbi_image_free(data); }
-		bool IsValid() const { return data; }
-		operator bool() const { return IsValid(); }
-	};
-
 	void PrepareTexture(
 		OvRendering::HAL::Texture& p_texture,
 		const void* p_data,
@@ -121,7 +58,7 @@ OvRendering::Resources::Texture* OvRendering::Resources::Loaders::TextureLoader:
 	bool p_generateMipmap
 )
 {
-	if (Image image{ p_filepath })
+	if (Data::Image image{ p_filepath })
 	{
 		auto texture = std::make_unique<HAL::Texture>(
 			Settings::ETextureType::TEXTURE_2D,
@@ -205,7 +142,7 @@ OvRendering::Resources::Texture* OvRendering::Resources::Loaders::TextureLoader:
 	bool p_generateMipmap
 )
 {
-	if (EncodedImage image{ p_data, p_size })
+	if (Data::Image image{ p_data, p_size })
 	{
 		auto texture = std::make_unique<HAL::Texture>(Settings::ETextureType::TEXTURE_2D, "FromEncodedMemory");
 
@@ -238,7 +175,7 @@ void OvRendering::Resources::Loaders::TextureLoader::Reload(
 	bool p_generateMipmap
 )
 {
-	if (Image image{ p_filePath })
+	if (Data::Image image{ p_filePath })
 	{
 		auto texture = std::make_unique<HAL::Texture>(
 			Settings::ETextureType::TEXTURE_2D,
@@ -303,7 +240,7 @@ void OvRendering::Resources::Loaders::TextureLoader::ReloadFromEncodedMemory(
 	bool p_generateMipmap
 )
 {
-	if (EncodedImage image{ p_data, p_size })
+	if (Data::Image image{ p_data, p_size })
 	{
 		auto texture = std::make_unique<HAL::Texture>(Settings::ETextureType::TEXTURE_2D, "FromEncodedMemory");
 
