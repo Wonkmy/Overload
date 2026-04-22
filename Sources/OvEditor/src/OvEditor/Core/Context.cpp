@@ -15,6 +15,7 @@
 #include <OvEditor/Settings/EditorSettings.h>
 #include <OvRendering/Entities/Light.h>
 #include <OvTools/Utils/SystemCalls.h>
+#include <optional>
 
 using namespace OvCore::Global;
 using namespace OvCore::ResourceManagement;
@@ -117,11 +118,10 @@ OvEditor::Core::Context::Context(const std::filesystem::path& p_projectFolder) :
 
 	std::filesystem::create_directories(Utils::FileSystem::kEditorDataPath);
 
-	uiManager = std::make_unique<OvUI::Core::UIManager>(window->GetGlfwWindow(),
+	uiManager = std::make_unique<OvUI::Core::UIManager>(
+		*window,
 		static_cast<OvUI::Styling::EStyle>(OvEditor::Settings::EditorSettings::ColorTheme.Get())
 	);
-
-	const auto fontPath = editorAssetsPath / "Fonts" / "Ruda-Bold.ttf";
 
 	if (!std::filesystem::exists(OvEditor::Utils::FileSystem::kLayoutFilePath))
 	{
@@ -129,13 +129,11 @@ OvEditor::Core::Context::Context(const std::filesystem::path& p_projectFolder) :
 		uiManager->ResetLayout(defaultLayoutPath.string());
 	}
 
-	uiManager->LoadFont(std::string{ Settings::GetFontID(Settings::EFontSize::BIG) }, fontPath.string(), 18);
-	uiManager->LoadFont(std::string{ Settings::GetFontID(Settings::EFontSize::MEDIUM) }, fontPath.string(), 15);
-	uiManager->LoadFont(std::string{ Settings::GetFontID(Settings::EFontSize::SMALL) }, fontPath.string(), 12);
-	uiManager->UseFont(std::string{ Settings::GetFontID(
-		static_cast<Settings::EFontSize>(Settings::EditorSettings::FontSize.Get())
-	) });
-
+	const auto fontPath = editorAssetsPath / "Fonts" / "Ruda-Bold.ttf";
+	uiManager->LoadFont("Ruda-Bold", fontPath.string(), 15);
+	uiManager->UseFont("Ruda-Bold");
+	const int uiScale = Settings::EditorSettings::UIScale.Get();
+	uiManager->SetScale(uiScale == 0 ? std::nullopt : std::make_optional(uiScale / 100.0f));
 	uiManager->SetEditorLayoutSaveFilename(OvEditor::Utils::FileSystem::kLayoutFilePath.string());
 	uiManager->SetEditorLayoutAutosaveFrequency(60.0f);
 	uiManager->EnableEditorLayoutSave(true);

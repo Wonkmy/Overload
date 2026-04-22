@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <filesystem>
+
 #include <OvCore/Global/ServiceLocator.h>
 #include <OvEditor/Core/Context.h>
 #include <OvEditor/Core/PanelsManager.h>
@@ -17,6 +19,7 @@
 #define EDITOR_EVENT(target) OvCore::Global::ServiceLocator::Get<OvEditor::Core::EditorActions>().target
 #define EDITOR_CONTEXT(instance) OvCore::Global::ServiceLocator::Get<OvEditor::Core::EditorActions>().GetContext().instance
 #define EDITOR_PANEL(type, id) OvCore::Global::ServiceLocator::Get<OvEditor::Core::EditorActions>().GetPanelsManager().GetPanelAs<type>(id)
+#define EDITOR_UI_SCALE EDITOR_CONTEXT(uiManager)->GetScale()
 
 namespace tinyxml2
 {
@@ -227,6 +230,18 @@ namespace OvEditor::Core
 
 		#pragma region ACTOR_MANIPULATION
 		/**
+		* Copy the given actor in the editor copy buffer
+		* @param p_actor
+		*/
+		void CopyActor(OvCore::ECS::Actor& p_actor);
+
+		/**
+		* Paste the copied actor, optionally as a child of the given parent
+		* @param p_parent
+		*/
+		void PasteActor(OvCore::ECS::Actor* p_parent = nullptr);
+
+		/**
 		* Select an actor and show him in inspector
 		* @param p_target
 		*/
@@ -264,6 +279,11 @@ namespace OvEditor::Core
 		* Compile the given shader
 		*/
 		void CompileShader(OvRendering::Resources::Shader& p_shader);
+
+		/**
+		* Compile the shader at the given resource path
+		*/
+		void CompileShader(const std::filesystem::path& p_shaderPath);
 
 		/**
 		* Save every materials to their respective files

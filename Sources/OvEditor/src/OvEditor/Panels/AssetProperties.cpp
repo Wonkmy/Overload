@@ -15,6 +15,8 @@
 #include <OvEditor/Core/EditorActions.h>
 #include <OvEditor/Panels/AssetProperties.h>
 #include <OvEditor/Panels/AssetView.h>
+#include <OvEditor/Panels/Inspector.h>
+#include <OvEditor/Panels/MaterialEditor.h>
 
 #include <OvTools/Utils/PathParser.h>
 #include <OvTools/Utils/SizeConverter.h>
@@ -54,12 +56,12 @@ OvEditor::Panels::AssetProperties::AssetProperties
 	m_settings = &CreateWidget<OvUI::Widgets::Layout::GroupCollapsable>("Settings");
 	m_settings->neverDisabled = true;
 	m_settingsColumns = &m_settings->CreateWidget<OvUI::Widgets::Layout::Columns<2>>();
-	m_settingsColumns->widths[0] = 150;
+	m_settingsColumns->widths[0] = 150 * EDITOR_UI_SCALE;
 
 	m_info = &CreateWidget<OvUI::Widgets::Layout::GroupCollapsable>("Info");
 	m_info->neverDisabled = true;
 	m_infoColumns = &m_info->CreateWidget<OvUI::Widgets::Layout::Columns<2>>();
-	m_infoColumns->widths[0] = 150;
+	m_infoColumns->widths[0] = 150 * EDITOR_UI_SCALE;
 
 	m_settings->enabled = m_info->enabled = false;
 }
@@ -176,7 +178,7 @@ void OvEditor::Panels::AssetProperties::CreateHeaderButtons()
 void OvEditor::Panels::AssetProperties::CreateAssetSelector()
 {
 	auto& columns = CreateWidget<OvUI::Widgets::Layout::Columns<2>>();
-	columns.widths[0] = 150;
+	columns.widths[0] = 150 * EDITOR_UI_SCALE;
 	m_assetSelector = &OvCore::Helpers::GUIDrawer::DrawAsset(columns, "Target", m_resource, &m_targetChanged);
 	const auto& widgets = columns.GetWidgets();
 	widgets[widgets.size() - 1].first->neverDisabled = true;
@@ -386,6 +388,8 @@ void OvEditor::Panels::AssetProperties::Apply()
 		if (modelManager.IsResourceRegistered(resourcePath))
 		{
 			modelManager.AResourceManager::ReloadResource(resourcePath);
+			EDITOR_PANEL(OvEditor::Panels::Inspector, "Inspector").Refresh();
+			EDITOR_PANEL(OvEditor::Panels::MaterialEditor, "Material Editor").Refresh();
 		}
 	}
 	else if (fileType == OvTools::Utils::PathParser::EFileType::TEXTURE)

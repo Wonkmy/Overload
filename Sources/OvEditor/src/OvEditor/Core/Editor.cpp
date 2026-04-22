@@ -7,15 +7,19 @@
 #include "OvEditor/Core/EditorActions.h"
 #include <tracy/Tracy.hpp>
 
+#include <filesystem>
+
 #include <OvCore/Helpers/GUIDrawer.h>
 #include <OvCore/Helpers/GUIHelpers.h>
 
+#include <OvCore/ResourceManagement/MaterialManager.h>
 #include <OvCore/ResourceManagement/ModelManager.h>
 #include <OvCore/ResourceManagement/TextureManager.h>
-#include <OvCore/ResourceManagement/MaterialManager.h>
 
-#include <OvTools/Utils/SystemCalls.h>
+#include <OvRendering/Resources/Parsers/EmbeddedAssetPath.h>
+
 #include <OvTools/Utils/PathParser.h>
+#include <OvTools/Utils/SystemCalls.h>
 
 #include <OvEditor/Core/Editor.h>
 #include <OvEditor/Panels/AssetBrowser.h>
@@ -85,6 +89,8 @@ void OvEditor::Core::Editor::SetupUI()
 			using EFileType = OvTools::Utils::PathParser::EFileType;
 			const auto fileType = OvTools::Utils::PathParser::GetFileType(p_path);
 			const auto path = OvTools::Utils::PathParser::MakeNonWindowsStyle(p_path);
+			const auto embeddedAssetPath = ParseEmbeddedAssetPath(path);
+			const bool isEmbeddedTexture = embeddedAssetPath && ParseEmbeddedTextureIndex(embeddedAssetPath->assetName).has_value();
 
 			auto openInAssetView = [&](auto* p_resource)
 			{
@@ -95,7 +101,7 @@ void OvEditor::Core::Editor::SetupUI()
 				assetView.Focus();
 			};
 
-			if (fileType == EFileType::TEXTURE)
+			if (fileType == EFileType::TEXTURE || isEmbeddedTexture)
 			{
 				openInAssetView(OVSERVICE(TextureManager).GetResource(path));
 			}
@@ -136,6 +142,14 @@ void OvEditor::Core::Editor::SetupUI()
 	// Provide the actor icon ID for ActorField widgets.
 	if (auto* actorTexture = m_context.editorResources->GetTexture("Actor"))
 		OvCore::Helpers::GUIHelpers::SetActorIconID(actorTexture->GetTexture().GetID());
+
+	// Provide asset existence checker so AssetFields show "(Missing Reference)" for invalid paths.
+	OvCore::Helpers::GUIHelpers::SetAssetExistsChecker(
+		[this](const std::string& p_path)
+		{
+			return std::filesystem::exists(m_editorActions.GetRealPath(p_path));
+		}
+	);
 
 	// Provide actor selection so double-clicking an ActorField selects it in the inspector.
 	OvCore::Helpers::GUIHelpers::SetActorSelectionProvider(
@@ -206,10 +220,39 @@ void OvEditor::Core::Editor::Update(float p_deltaTime)
 
 void OvEditor::Core::Editor::HandleGlobalShortcuts()
 {
+	auto& sceneView = EDITOR_PANEL(SceneView, "Scene View");
+	auto& hierarchy = EDITOR_PANEL(Hierarchy, "Hierarchy");
+	const bool isSceneViewFocused = sceneView.IsFocused();
+	const bool isHierarchyFocused = hierarchy.IsFocused();
+
 	// If the [Del] key is pressed while an actor is selected and the Scene View or Hierarchy is focused
-	if (m_context.inputManager->IsKeyPressed(OvWindowing::Inputs::EKey::KEY_DELETE) && EDITOR_EXEC(IsAnyActorSelected()) && (EDITOR_PANEL(SceneView, "Scene View").IsFocused() || EDITOR_PANEL(Hierarchy, "Hierarchy").IsFocused()))
+	if (m_context.inputManager->IsKeyPressed(OvWindowing::Inputs::EKey::KEY_DELETE) && EDITOR_EXEC(IsAnyActorSelected()) && (isSceneViewFocused || isHierarchyFocused))
 	{
 		EDITOR_EXEC(DestroyActor(EDITOR_EXEC(GetSelectedActor())));
+	}
+
+	const bool isControlPressed =
+		m_context.inputManager->GetKeyState(OvWindowing::Inputs::EKey::KEY_LEFT_CONTROL) == OvWindowing::Inputs::EKeyState::KEY_DOWN ||
+		m_context.inputManager->GetKeyState(OvWindowing::Inputs::EKey::KEY_RIGHT_CONTROL) == OvWindowing::Inputs::EKeyState::KEY_DOWN;
+
+	if (isControlPressed && (isSceneViewFocused || isHierarchyFocused))
+	{
+		if (m_context.inputManager->IsKeyPressed(OvWindowing::Inputs::EKey::KEY_C) && EDITOR_EXEC(IsAnyActorSelected()))
+		{
+			EDITOR_EXEC(CopyActor(EDITOR_EXEC(GetSelectedActor())));
+		}
+
+		if (m_context.inputManager->IsKeyPressed(OvWindowing::Inputs::EKey::KEY_V))
+		{
+			OvCore::ECS::Actor* parent = nullptr;
+
+			if (EDITOR_EXEC(IsAnyActorSelected()))
+			{
+				parent = &EDITOR_EXEC(GetSelectedActor());
+			}
+
+			EDITOR_EXEC(PasteActor(parent));
+		}
 	}
 }
 

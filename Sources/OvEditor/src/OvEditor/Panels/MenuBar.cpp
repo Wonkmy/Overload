@@ -26,6 +26,7 @@
 #include <OvUI/Widgets/Selection/ColorEdit.h>
 #include <OvUI/Widgets/Selection/ComboBox.h>
 #include <filesystem>
+#include <optional>
 
 #include "OvEditor/Core/EditorActions.h"
 #include "OvEditor/Panels/AssetView.h"
@@ -34,6 +35,7 @@
 #include "OvEditor/Panels/SceneView.h"
 #include "OvEditor/Settings/EditorSettings.h"
 #include "OvEditor/Utils/ActorCreationMenu.h"
+#include "OvUI/Widgets/Selection/CheckBox.h"
 
 using namespace OvUI::Panels;
 using namespace OvUI::Widgets;
@@ -74,10 +76,10 @@ void OvEditor::Panels::MenuBar::HandleShortcuts(float p_deltaTime)
 
 void OvEditor::Panels::MenuBar::InitializeSettingsMenu()
 {
-	auto& themeButton = m_settingsMenu->CreateWidget<MenuList>("Editor Theme");
-	themeButton.CreateWidget<Texts::Text>("Some themes may require a restart");
+	auto& appearanceButton = m_settingsMenu->CreateWidget<MenuList>("Appearance");
+	appearanceButton.CreateWidget<Texts::Text>("Some themes may require a restart");
 
-	auto& colorTheme = themeButton.CreateWidget<Selection::ComboBox>(static_cast<int>(Settings::EditorSettings::ColorTheme.Get()));
+	auto& colorTheme = appearanceButton.CreateWidget<Selection::ComboBox>(static_cast<int>(Settings::EditorSettings::ColorTheme.Get()));
 	colorTheme.choices = {
 		{ static_cast<int>(OvUI::Styling::EStyle::IM_CLASSIC_STYLE), "ImGui Classic"},
 		{ static_cast<int>(OvUI::Styling::EStyle::IM_DARK_STYLE), "ImGui Dark"},
@@ -92,17 +94,16 @@ void OvEditor::Panels::MenuBar::InitializeSettingsMenu()
 		EDITOR_CONTEXT(uiManager)->ApplyStyle(static_cast<OvUI::Styling::EStyle>(p_value));
 	};
 
-	auto& fontSizeMenu = m_settingsMenu->CreateWidget<MenuList>("Font Size");
-	auto& fontSizeSelector = fontSizeMenu.CreateWidget<Selection::ComboBox>(static_cast<int>(Settings::EditorSettings::FontSize.Get()));
-	fontSizeSelector.choices = {
-		{ static_cast<int>(Settings::EFontSize::SMALL), "Small"},
-		{ static_cast<int>(Settings::EFontSize::MEDIUM), "Medium"},
-		{ static_cast<int>(Settings::EFontSize::BIG), "Big"}
+	auto& uiScale = appearanceButton.CreateWidget<Selection::ComboBox>(static_cast<int>(Settings::EditorSettings::UIScale.Get()));
+	uiScale.choices = {
+		{ 0, "[BETA] Automatic (DPI Aware)"},
+		{ 100, "100%"},
+		{ 150, "150%"},
+		{ 200, "200%"},
 	};
-	fontSizeSelector.ValueChangedEvent += [this](int p_value) {
-		Settings::EditorSettings::FontSize = p_value;
-		const auto fontID = std::string{ Settings::GetFontID(static_cast<Settings::EFontSize>(p_value)) };
-		EDITOR_CONTEXT(uiManager)->UseFont(fontID);
+	uiScale.ValueChangedEvent += [this](int p_value) {
+		Settings::EditorSettings::UIScale = p_value;
+		EDITOR_CONTEXT(uiManager)->SetScale(p_value == 0 ? std::nullopt : std::make_optional(p_value / 100.0f));
 	};
 
 	m_settingsMenu->CreateWidget<MenuItem>("Spawn actors at origin", "", true, true).ValueChangedEvent += EDITOR_BIND(SetActorSpawnAtOrigin, std::placeholders::_1);
@@ -204,7 +205,6 @@ void OvEditor::Panels::MenuBar::InitializeSettingsMenu()
 	{
 		Settings::EditorSettings::CodeEditorCommand = p_value;
 	};
-
 }
 
 void OvEditor::Panels::MenuBar::CreateFileMenu()
