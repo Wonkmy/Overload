@@ -10,16 +10,12 @@
 
 void OvUI::Panels::PanelUndecorated::_Draw_Impl()
 {
-	auto& style = ImGui::GetStyle();
-	ImVec2 previousPadding = style.WindowPadding;
-	ImVec2 previousMinSize = style.WindowMinSize;
-	style.WindowPadding = { 0, 0 };
-	style.WindowMinSize = { 0, 0 };
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0, 0 });
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, { 0, 0 });
 
 	if (ImGui::Begin(m_panelID.c_str(), nullptr, CollectFlags()))
 	{
-		style.WindowPadding = previousPadding;
-		style.WindowMinSize = previousMinSize;
+		ImGui::PopStyleVar(2);
 
 		Update();
 			
@@ -29,14 +25,13 @@ void OvUI::Panels::PanelUndecorated::_Draw_Impl()
 	}
 	else
 	{
-		style.WindowPadding = previousPadding;
+		ImGui::PopStyleVar(2);
 	}
 }
 
 int OvUI::Panels::PanelUndecorated::CollectFlags()
 {
 	ImGuiWindowFlags flags =
-		ImGuiWindowFlags_AlwaysUseWindowPadding |
 		ImGuiWindowFlags_NoResize |
 		ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoScrollbar |

@@ -22,7 +22,7 @@
 #include <OvUI/Widgets/Layout/Columns.h>
 #include <OvUI/Widgets/Selection/CheckBox.h>
 #include <OvUI/Widgets/Buttons/Button.h>
-#include <OvUI/Widgets/Buttons/ButtonSmall.h>
+#include <OvUI/Widgets/Buttons/Toggle.h>
 #include <OvUI/Plugins/DDTarget.h>
 
 #include <OvCore/Global/ServiceLocator.h>
@@ -75,6 +75,75 @@ void OvCore::Helpers::GUIDrawer::DrawVec4(OvUI::Internal::WidgetContainer & p_ro
 	dispatcher.RegisterReference(reinterpret_cast<std::array<float, 4>&>(p_data));
 }
 
+namespace
+{
+	template <size_t N>
+	requires (N == 3 || N == 4)
+	void DrawHybridVecNImpl(
+		OvUI::Internal::WidgetContainer& p_root,
+		const std::string& p_name,
+		float* p_data,
+		float p_step,
+		float p_min,
+		float p_max)
+	{
+		using namespace OvUI::Widgets;
+		using namespace OvUI::Plugins;
+
+		constexpr bool kHasAlpha = N == 4;
+
+		OvCore::Helpers::GUIDrawer::CreateTitle(p_root, p_name);
+
+		auto& rightSide = p_root.CreateWidget<Layout::Group>();
+		rightSide.horizontal = true;
+		rightSide.stretchWidget = 0;
+
+		auto& inputField = rightSide.CreateWidget<Layout::Group>();
+
+		auto& vecWidget = inputField.CreateWidget<Drags::DragMultipleScalars<float, N>>(
+			OvCore::Helpers::GUIDrawer::GetDataType<float>(), p_min, p_max, 0.f, p_step, "", OvCore::Helpers::GUIDrawer::GetFormat<float>());
+		vecWidget.template AddPlugin<DataDispatcher<std::array<float, N>>>()
+			.RegisterReference(reinterpret_cast<std::array<float, N>&>(*p_data));
+
+		OvUI::Types::Color initialColor;
+		if constexpr (N == 3)
+			initialColor = { p_data[0], p_data[1], p_data[2] };
+		else
+			initialColor = { p_data[0], p_data[1], p_data[2], p_data[3] };
+
+		auto& colorWidget = inputField.CreateWidget<Selection::ColorEdit>(kHasAlpha, initialColor);
+		auto& colorDispatcher = colorWidget.AddPlugin<DataDispatcher<OvUI::Types::Color>>();
+		if constexpr (N == 3)
+		{
+			colorDispatcher.RegisterGatherer([p_data]() -> OvUI::Types::Color { return { p_data[0], p_data[1], p_data[2] }; });
+			colorDispatcher.RegisterProvider([p_data](OvUI::Types::Color c) { p_data[0] = c.r; p_data[1] = c.g; p_data[2] = c.b; });
+		}
+		else
+		{
+			colorDispatcher.RegisterReference(reinterpret_cast<OvUI::Types::Color&>(*p_data));
+		}
+		colorWidget.enabled = false;
+
+		auto& toggle = rightSide.CreateWidget<Buttons::Toggle>("VEC", "COL");
+		toggle.tooltip = "Toggle between vector and color display";
+		toggle.neverDisabled = true;
+		toggle.StateChangedEvent += [&vecWidget, &colorWidget](bool colorMode) {
+			vecWidget.enabled   = !colorMode;
+			colorWidget.enabled =  colorMode;
+		};
+	}
+}
+
+void OvCore::Helpers::GUIDrawer::DrawHybridVec3(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvMaths::FVector3& p_data, float p_step, float p_min, float p_max)
+{
+	DrawHybridVecNImpl<3>(p_root, p_name, &p_data.x, p_step, p_min, p_max);
+}
+
+void OvCore::Helpers::GUIDrawer::DrawHybridVec4(OvUI::Internal::WidgetContainer& p_root, const std::string& p_name, OvMaths::FVector4& p_data, float p_step, float p_min, float p_max)
+{
+	DrawHybridVecNImpl<4>(p_root, p_name, &p_data.x, p_step, p_min, p_max);
+}
+
 void OvCore::Helpers::GUIDrawer::DrawQuat(OvUI::Internal::WidgetContainer & p_root, const std::string & p_name, OvMaths::FQuaternion & p_data, float p_step, float p_min, float p_max)
 {
 	CreateTitle(p_root, p_name);
@@ -101,8 +170,13 @@ void OvCore::Helpers::GUIDrawer::DrawColor(OvUI::Internal::WidgetContainer & p_r
 
 std::string OvCore::Helpers::GUIDrawer::GetAssetDisplayName(const std::string& p_path)
 {
+	if (p_path.empty())
+		return "";
 	const std::string friendly = OvTools::Utils::PathParser::GetFriendlyPath(p_path);
-	return friendly.empty() ? "" : std::filesystem::path(friendly).stem().string();
+	const std::string stem = friendly.empty() ? "" : std::filesystem::path(friendly).stem().string();
+	if (!GUIHelpers::AssetExists(p_path))
+		return stem.empty() ? "(Missing Reference)" : stem + " (Missing Reference)";
+	return stem;
 }
 
 std::string OvCore::Helpers::GUIDrawer::GetAssetTooltip(const std::string& p_path)
