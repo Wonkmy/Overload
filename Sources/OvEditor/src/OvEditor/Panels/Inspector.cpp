@@ -36,6 +36,7 @@
 #include <OvUI/Widgets/Buttons/Button.h>
 #include <OvUI/Widgets/Layout/Columns.h>
 #include <OvUI/Widgets/Layout/Spacing.h>
+#include <OvUI/Styling/Style.h>
 #include <OvWindowing/Dialogs/MessageBox.h>
 
 using namespace OvCore::ECS;
@@ -215,7 +216,14 @@ void OvEditor::Panels::Inspector::_PopulateActorInfo()
 		[this] { return std::format("{:016X}", m_targetActor->GetGUID()); }
 	);
 
-	_DrawAddSection();
+	auto& prefabSourceField = OvCore::Helpers::GUIDrawer::DrawAsset(
+		headerColumns,
+		"Prefab Source",
+		[this] { return m_targetActor->GetPrefabSource(); },
+		[](const std::string&) {},
+		OvTools::Utils::PathParser::EFileType::PREFAB
+	);
+	prefabSourceField.disabled = true;
 }
 
 void OvEditor::Panels::Inspector::_PopulateActorComponents()
@@ -249,6 +257,7 @@ void OvEditor::Panels::Inspector::_DrawAddSection()
 			return;
 
 		const uint32_t componentIconID = EDITOR_CONTEXT(editorResources)->GetTexture("Component")->GetTexture().GetID();
+		const uint32_t addScriptIconID = EDITOR_CONTEXT(editorResources)->GetTexture("Add_Script")->GetTexture().GetID();
 
 		OvCore::Helpers::GUIHelpers::PickerItemList items;
 
@@ -306,8 +315,47 @@ void OvEditor::Panels::Inspector::_DrawAddSection()
 
 				m_targetActor->AddBehaviour(scriptPath);
 			},
-			true, false
+			true, false,
+			[this](const std::string& p_resourcePath) {
+				const std::string scriptPath = EDITOR_EXEC(GetScriptPath(p_resourcePath));
+				return !m_targetActor->GetBehaviour(scriptPath);
+			}
 		);
+
+		items.Add({
+			"Create Script...",
+			"Create Script...",
+			"Create Script...",
+			addScriptIconID,
+			[this] {
+				if (!m_targetActor.has_value())
+					return;
+
+				const std::string searchText = OvCore::Helpers::GUIHelpers::GetPickerSearchText();
+				const std::string initialDir = EDITOR_CONTEXT(projectAssetsPath).string();
+				const std::string destination = EDITOR_EXEC(CreateScript(initialDir, searchText));
+
+				if (destination.empty())
+					return;
+
+				const std::string scriptPath = EDITOR_EXEC(GetScriptPath(destination));
+				const std::string displayName = OvTools::Utils::PathParser::GetElementName(scriptPath);
+
+				if (m_targetActor->GetBehaviour(scriptPath))
+				{
+					OvWindowing::Dialogs::MessageBox(
+						"Script already attached",
+						"The script \"" + displayName + "\" is already attached to this actor.",
+						OvWindowing::Dialogs::MessageBox::EMessageType::ERROR,
+						OvWindowing::Dialogs::MessageBox::EButtonLayout::OK
+					);
+					return;
+				}
+
+				m_targetActor->AddBehaviour(scriptPath);
+			},
+			true  /* alwaysVisible */
+		});
 
 		OvCore::Helpers::GUIHelpers::OpenPicker(std::move(items), "Add Component");
 	};
@@ -346,7 +394,7 @@ void OvEditor::Panels::Inspector::_DrawComponent(AComponent& p_component, int p_
 
 	auto& columns = header.CreateWidget<Layout::Columns<2>>();
 	columns.SetID("comp_" + p_component.GetName());
-	columns.widths[0] = 200 * EDITOR_UI_SCALE;
+	columns.widths[0] = 200 * OVUI_SCALE;
 	p_component.OnInspector(columns);
 }
 
@@ -377,9 +425,15 @@ void OvEditor::Panels::Inspector::_DrawBehaviour(Behaviour& p_behaviour, int p_i
 	header.MoveUpEvent += [move] { move(true); };
 	header.MoveDownEvent += [move] { move(false); };
 
+	const uint32_t editIconID = EDITOR_CONTEXT(editorResources)->GetTexture("Edit")->GetTexture().GetID();
+	const auto scriptPath = EDITOR_CONTEXT(projectAssetsPath) / p_behaviour.name;
+	header.actions.push_back({editIconID, [scriptPath] {
+		EDITOR_EXEC(OpenInCodeEditor(scriptPath));
+	}});
+
 	auto& columns = header.CreateWidget<Layout::Columns<2>>();
 	columns.SetID("bhv_" + p_behaviour.name);
-	columns.widths[0] = 200 * EDITOR_UI_SCALE;
+	columns.widths[0] = 200 * OVUI_SCALE;
 	p_behaviour.OnInspector(columns);
 }
 

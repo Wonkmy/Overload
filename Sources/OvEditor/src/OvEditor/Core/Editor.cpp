@@ -76,6 +76,10 @@ void OvEditor::Core::Editor::SetupUI()
 		}
 	);
 
+	OvCore::Helpers::GUIHelpers::SetPickerSearchTextProvider(
+		[this]() { return m_itemPicker->GetSearchText(); }
+	);
+
 	OvCore::Helpers::GUIHelpers::SetIconProvider(
 		[this](OvTools::Utils::PathParser::EFileType p_fileType) -> uint32_t {
 			auto* texture = m_context.editorResources->GetTexture(OvTools::Utils::PathParser::FileTypeToString(p_fileType));
@@ -147,7 +151,22 @@ void OvEditor::Core::Editor::SetupUI()
 	OvCore::Helpers::GUIHelpers::SetAssetExistsChecker(
 		[this](const std::string& p_path)
 		{
-			return std::filesystem::exists(m_editorActions.GetRealPath(p_path));
+			const std::string path = OvTools::Utils::PathParser::MakeNonWindowsStyle(p_path);
+
+			if (const auto embeddedAssetPath = ParseEmbeddedAssetPath(path); embeddedAssetPath)
+			{
+				const bool isEmbeddedMaterial = ParseEmbeddedMaterialIndex(embeddedAssetPath->assetName).has_value();
+				const bool isEmbeddedTexture = ParseEmbeddedTextureIndex(embeddedAssetPath->assetName).has_value();
+
+				if (isEmbeddedMaterial || isEmbeddedTexture)
+				{
+					return std::filesystem::exists(m_editorActions.GetRealPath(embeddedAssetPath->modelPath));
+				}
+
+				return false;
+			}
+
+			return std::filesystem::exists(m_editorActions.GetRealPath(path));
 		}
 	);
 

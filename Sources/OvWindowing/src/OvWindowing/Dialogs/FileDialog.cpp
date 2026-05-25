@@ -30,13 +30,18 @@ void OvWindowing::Dialogs::FileDialog::SetInitialDirectory(const std::string & p
 	m_initialDirectory = p_initialDirectory;
 }
 
+void OvWindowing::Dialogs::FileDialog::SetInitialFilename(const std::string& p_initialFilename)
+{
+	m_initialFilename = p_initialFilename;
+}
+
 void OvWindowing::Dialogs::FileDialog::Show(EExplorerFlags p_flags)
 {
 #ifdef _WIN32
 	OPENFILENAME ofn;
 
-	if (!m_initialDirectory.empty())
-		m_filepath = m_initialDirectory;
+	if (!m_initialFilename.empty())
+		m_filepath = (std::filesystem::path{ m_initialDirectory } / m_initialFilename).string();
 
 	m_filepath.resize(MAX_PATH);
 
@@ -72,18 +77,17 @@ void OvWindowing::Dialogs::FileDialog::Show(EExplorerFlags p_flags)
 	if (m_isSaveDialog)
 		command += " --save";
 	
-	if (!m_initialDirectory.empty())
+	if (!m_initialFilename.empty())
+	{
+		command += " --filename=\"" + (std::filesystem::path{ m_initialDirectory } / m_initialFilename).string() + "\"";
+	}
+	else if (!m_initialDirectory.empty())
 	{
 		// Add trailing slash to indicate directory for zenity
 		command += " --filename=\"" + m_initialDirectory;
 		if (m_initialDirectory.back() != '/')
 			command += "/";
 		command += "\"";
-	}
-	else
-	{
-		// Even without initial directory, --filename="" helps show the filename entry
-		command += " --filename=\"\"";
 	}
 	
 	// Add file filters if present

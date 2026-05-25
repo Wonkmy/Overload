@@ -13,6 +13,7 @@
 #include <vector>
 #include <tinyxml2.h>
 
+#include <OvCore/ECS/Actor.h>
 #include <OvCore/Global/ServiceLocator.h>
 #include <OvCore/Helpers/GUIDrawer.h>
 #include <OvCore/Helpers/GUIHelpers.h>
@@ -40,6 +41,7 @@
 #include <OvUI/Plugins/ContextualMenu.h>
 #include <OvUI/Plugins/DDSource.h>
 #include <OvUI/Plugins/DDTarget.h>
+#include <OvUI/Styling/Style.h>
 #include <OvUI/Widgets/Buttons/Button.h>
 #include <OvUI/Widgets/Layout/Group.h>
 #include <OvUI/Widgets/Texts/TextClickable.h>
@@ -679,6 +681,42 @@ namespace
 			}
 		}
 
+		void ExtractMaterialFiles()
+		{
+			auto& modelManager = OVSERVICE(OvCore::ResourceManagement::ModelManager);
+			auto& materialManager = OVSERVICE(OvCore::ResourceManagement::MaterialManager);
+			const std::string resourcePath = EDITOR_EXEC(GetResourcePath(filePath.string(), m_protected));
+
+			if (auto model = modelManager.GetResource(resourcePath))
+			{
+				const auto& embeddedMaterials = model->GetEmbeddedMaterials();
+				const auto& materialNames = model->GetMaterialNames();
+
+				for (size_t materialIndex = 0; materialIndex < embeddedMaterials.size(); ++materialIndex)
+				{
+					const std::string embeddedMaterialPath = OvRendering::Resources::Parsers::MakeEmbeddedMaterialPath(
+						resourcePath,
+						static_cast<uint32_t>(materialIndex)
+					);
+
+					auto* embeddedMaterial = materialManager.GetResource(embeddedMaterialPath);
+					if (!embeddedMaterial)
+					{
+						continue;
+					}
+
+					const bool hasNamedSlot = materialIndex < materialNames.size() && !materialNames[materialIndex].empty();
+					const std::string materialName = hasNamedSlot
+						? materialNames[materialIndex]
+						: std::format("embedded_material_{}", materialIndex);
+
+					const auto finalPath = FindAvailableFilePath(filePath.parent_path() / (materialName + ".ovmat"));
+					OvCore::Resources::Loaders::MaterialLoader::Save(*embeddedMaterial, finalPath.string());
+					DuplicateEvent.Invoke(finalPath);
+				}
+			}
+		}
+
 		void CreateMaterialCreationOption(OvUI::Internal::WidgetContainer& p_root, const std::string_view p_materialName)
 		{
 			const std::string materialName{ p_materialName };
@@ -707,9 +745,15 @@ namespace
 			if (!m_protected)
 			{
 				auto& generateMaterialsMenu = CreateWidget<OvUI::Widgets::Menu::MenuList>("Generate materials...");
+				auto& extractMaterialsAction = CreateWidget<OvUI::Widgets::Menu::MenuItem>("Extract materials");
 
 				CreateMaterialCreationOption(generateMaterialsMenu, "Standard");
 				CreateMaterialCreationOption(generateMaterialsMenu, "Unlit");
+
+				extractMaterialsAction.ClickedEvent += [this]
+				{
+					ExtractMaterialFiles();
+				};
 			}
 
 			FileContextualMenu::CreateList();
@@ -872,16 +916,22 @@ OvEditor::Panels::AssetBrowser::AssetBrowser
 	auto& refreshButton = CreateWidget<Buttons::Button>("Refresh");
 	refreshButton.ClickedEvent += std::bind(&AssetBrowser::Refresh, this);
 	refreshButton.lineBreak = false;
-	refreshButton.idleBackgroundColor = { 0.f, 0.5f, 0.0f };
+	refreshButton.backgroundColor = OVUI_STYLE(SuccessButton);
+	refreshButton.hoveredBackgroundColor = OVUI_STYLE(SuccessButtonHovered);
+	refreshButton.clickedBackgroundColor = OVUI_STYLE(SuccessButtonActive);
 
 	auto& importButton = CreateWidget<Buttons::Button>("Import Asset");
 	importButton.ClickedEvent += EDITOR_BIND(ImportAsset, EDITOR_CONTEXT(projectAssetsPath).string());
-	importButton.idleBackgroundColor = { 0.7f, 0.5f, 0.0f };
+	importButton.backgroundColor = OVUI_STYLE(WarningButton);
+	importButton.hoveredBackgroundColor = OVUI_STYLE(WarningButtonHovered);
+	importButton.clickedBackgroundColor = OVUI_STYLE(WarningButtonActive);
 	importButton.lineBreak = false;
 
 	auto& codeEditorButton = CreateWidget<Buttons::Button>("Open Code Editor");
 	codeEditorButton.ClickedEvent += [this] { EDITOR_EXEC(OpenInCodeEditor(EDITOR_CONTEXT(projectFolder))); };
-	codeEditorButton.idleBackgroundColor = { 0.1f, 0.3f, 0.7f };
+	codeEditorButton.backgroundColor = OVUI_STYLE(AccentButton);
+	codeEditorButton.hoveredBackgroundColor = OVUI_STYLE(AccentButtonHovered);
+	codeEditorButton.clickedBackgroundColor = OVUI_STYLE(AccentButtonActive);
 
 	m_assetList = &CreateWidget<Layout::Group>();
 
@@ -1106,6 +1156,29 @@ void OvEditor::Panels::AssetBrowser::ConsiderItem(OvUI::Widgets::Layout::TreeNod
 						}
 					}
 				};
+
+			treeNode.AddPlugin<OvUI::Plugins::DDTarget<std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::TreeNode*>>>("Actor").DataReceivedEvent += [this, &treeNode, path, p_isEngineItem](std::pair<OvCore::ECS::Actor*, OvUI::Widgets::Layout::TreeNode*> p_data)
+			{
+				if (!p_data.first)
+				{
+					return;
+				}
+
+				const auto correctPath = m_pathUpdate.find(&treeNode) != m_pathUpdate.end() ? m_pathUpdate.at(&treeNode) : std::filesystem::path(path);
+				if (!ValidateFolderPath(correctPath, "Create prefab"))
+				{
+					return;
+				}
+
+				const std::string actorName = p_data.first->GetName().empty() ? "Prefab" : p_data.first->GetName();
+				const std::filesystem::path prefabPath = FindAvailableFilePath(correctPath / (actorName + ".ovprefab"));
+
+				EDITOR_EXEC(SaveActorAsPrefab(*p_data.first, prefabPath.string()));
+
+				treeNode.Open();
+				treeNode.RemoveAllWidgets();
+				ParseFolder(treeNode, std::filesystem::directory_entry(correctPath), p_isEngineItem);
+			};
 			}
 
 			contextMenu.DestroyedEvent += [&itemGroup](const std::filesystem::path& p_deletedPath) { itemGroup.Destroy(); };

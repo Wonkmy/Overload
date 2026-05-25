@@ -123,8 +123,10 @@ OvEditor::Core::EditorResources::EditorResources(const std::string& p_editorAsse
 		{"Component", CreateTexture<LINEAR>(texturesFolder / "Component.png")},
 		{"Material", CreateTexture<LINEAR>(texturesFolder / "Material.png")},
 		{"Scene", CreateTexture<LINEAR>(texturesFolder / "Scene.png")},
+		{"Prefab", CreateTexture<LINEAR>(texturesFolder / "Prefab.png")},
 		{"Sound", CreateTexture<LINEAR>(texturesFolder / "Sound.png")},
 		{"Script", CreateTexture<LINEAR>(texturesFolder / "Script.png")},
+		{"Add_Script", CreateTexture<LINEAR>(texturesFolder / "Add_Script.png")},
 		{"Font", CreateTexture<LINEAR>(texturesFolder / "Font.png")},
 		{"Point_Light", CreateTexture<NEAREST>(texturesFolder / "Point_Light.png")},
 		{"Spot_Light", CreateTexture<NEAREST>(texturesFolder / "Spot_Light.png")},
@@ -133,7 +135,8 @@ OvEditor::Core::EditorResources::EditorResources(const std::string& p_editorAsse
 		{"Ambient_Sphere_Light", CreateTexture<NEAREST>(texturesFolder / "Ambient_Sphere_Light.png")},
 		{"Empty_Texture", CreateTexture<LINEAR>(texturesFolder / "Empty_Texture.png")},
 		{"Actor", CreateTexture<LINEAR>(texturesFolder / "Actor.png")},
-		{"Search", CreateTexture<LINEAR>(texturesFolder / "Search.png")}
+		{"Search", CreateTexture<LINEAR>(texturesFolder / "Search.png")},
+		{"Edit", CreateTexture<LINEAR>(texturesFolder / "Edit.png")}
 	};
 
 	m_models = {

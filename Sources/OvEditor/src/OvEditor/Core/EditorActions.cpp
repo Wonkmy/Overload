@@ -5,6 +5,7 @@
 */
 
 #include <algorithm>
+#include <charconv>
 #include "OvDebug/Assertion.h"
 #include "OvTools/Utils/OptRef.h"
 #include <filesystem>
@@ -12,6 +13,8 @@
 #include <iostream>
 #include <ranges>
 #include <string_view>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <tinyxml2.h>
 
@@ -31,6 +34,7 @@
 #include <OvEditor/Core/EditorActions.h>
 #include <OvEditor/Core/GizmoBehaviour.h>
 #include <OvEditor/Helpers/PickerHelpers.h>
+#include <OvEditor/Panels/AssetBrowser.h>
 #include <OvEditor/Panels/AssetView.h>
 #include <OvEditor/Panels/GameView.h>
 #include <OvEditor/Panels/Inspector.h>
@@ -39,10 +43,12 @@
 #include <OvEditor/Panels/SceneView.h>
 #include <OvEditor/Settings/EditorSettings.h>
 #include <OvEditor/Utils/FileSystem.h>
+#include <OvCore/SceneSystem/PrefabOperations.h>
 
 #include <OvTools/Utils/PathParser.h>
 #include <OvTools/Utils/String.h>
 #include <OvTools/Utils/SystemCalls.h>
+#include <OvRendering/Data/Image.h>
 #include <OvRendering/Resources/Parsers/EmbeddedAssetPath.h>
 
 #include <OvWindowing/Dialogs/OpenFileDialog.h>
@@ -52,6 +58,259 @@
 namespace
 {
 	constexpr std::string_view kDefaultMaterialPath = ":Materials\\Default.ovmat";
+
+	OvCore::ECS::Actor* ResolvePrefabInstanceRoot(OvCore::ECS::Actor& p_actor)
+	{
+		auto* resolvedRoot = &p_actor;
+
+		while (resolvedRoot && !resolvedRoot->HasPrefabSource())
+		{
+			resolvedRoot = resolvedRoot->GetParent();
+		}
+
+		if (!resolvedRoot)
+		{
+			OVLOG_ERROR("Failed to resolve prefab instance root for actor \"" + p_actor.GetName() + "\": no prefab source found in actor hierarchy.");
+			return nullptr;
+		}
+
+		return resolvedRoot;
+	}
+
+	bool TryParseUInt64(const char* p_text, uint64_t& p_value)
+	{
+		if (!p_text)
+		{
+			return false;
+		}
+
+		const std::string_view text{ p_text };
+		const auto [parseEnd, error] = std::from_chars(text.data(), text.data() + text.size(), p_value);
+		return error == std::errc{} && parseEnd == text.data() + text.size();
+	}
+
+	void RemapActorReferenceGuidsInActorNode(
+		tinyxml2::XMLElement& p_actorNode,
+		const std::unordered_map<uint64_t, uint64_t>& p_guidRemap)
+	{
+		auto* behavioursNode = p_actorNode.FirstChildElement("behaviours");
+
+		if (!behavioursNode)
+		{
+			return;
+		}
+
+		for (auto* behaviourNode = behavioursNode->FirstChildElement("behaviour");
+			behaviourNode;
+			behaviourNode = behaviourNode->NextSiblingElement("behaviour"))
+		{
+			auto* dataNode = behaviourNode->FirstChildElement("data");
+			auto* scriptPropertiesNode = dataNode ? dataNode->FirstChildElement("script_properties") : nullptr;
+
+			if (!scriptPropertiesNode)
+			{
+				continue;
+			}
+
+			for (auto* propertyNode = scriptPropertiesNode->FirstChildElement();
+				propertyNode;
+				propertyNode = propertyNode->NextSiblingElement())
+			{
+				const char* typeAttribute = propertyNode->Attribute("type");
+
+				if (!typeAttribute || std::string_view{ typeAttribute } != "actor")
+				{
+					continue;
+				}
+
+				uint64_t sourceGuid = 0;
+
+				if (!TryParseUInt64(propertyNode->GetText(), sourceGuid))
+				{
+					continue;
+				}
+
+				if (const auto it = p_guidRemap.find(sourceGuid); it != p_guidRemap.end())
+				{
+					propertyNode->SetText(std::to_string(it->second).c_str());
+				}
+			}
+		}
+	}
+
+	struct ActorHierarchyEntry
+	{
+		OvCore::ECS::Actor* actor = nullptr;
+		OvCore::ECS::Actor* parent = nullptr;
+	};
+
+	void CollectActorHierarchy(
+		OvCore::ECS::Actor& p_actor,
+		OvCore::ECS::Actor* p_parent,
+		std::vector<ActorHierarchyEntry>& p_outEntries)
+	{
+		p_outEntries.push_back({ &p_actor, p_parent });
+
+		for (auto* child : p_actor.GetChildren())
+		{
+			CollectActorHierarchy(*child, &p_actor, p_outEntries);
+		}
+	}
+
+	uint64_t GetPrefabNodeGUIDOrFallback(OvCore::ECS::Actor& p_actor)
+	{
+		if (p_actor.HasPrefabNodeGUID())
+		{
+			return p_actor.GetPrefabNodeGUID();
+		}
+
+		const uint64_t fallbackGUID = p_actor.GetGUID();
+		p_actor.SetPrefabNodeGUID(fallbackGUID);
+		return fallbackGUID;
+	}
+
+	OvCore::ECS::Actor* FindUnusedActorWithPrefabNodeGUID(
+		const uint64_t p_prefabNodeGUID,
+		const std::unordered_map<uint64_t, std::vector<OvCore::ECS::Actor*>>& p_actorsByPrefabNodeGUID,
+		const std::unordered_set<OvCore::ECS::Actor*>& p_usedActors)
+	{
+		if (const auto found = p_actorsByPrefabNodeGUID.find(p_prefabNodeGUID); found != p_actorsByPrefabNodeGUID.end())
+		{
+			for (auto* actor : found->second)
+			{
+				if (!p_usedActors.contains(actor))
+				{
+					return actor;
+				}
+			}
+		}
+
+		return nullptr;
+	}
+
+	std::unordered_map<uint64_t, uint64_t> GatherSerializedGuidsByPrefabNodeGUID(const std::filesystem::path& p_prefabPath)
+	{
+		std::unordered_map<uint64_t, uint64_t> serializedGuidsByPrefabNodeGUID;
+
+		tinyxml2::XMLDocument doc;
+		if (doc.LoadFile(p_prefabPath.string().c_str()) != tinyxml2::XML_SUCCESS)
+		{
+			return serializedGuidsByPrefabNodeGUID;
+		}
+
+		auto* rootNode = doc.FirstChildElement("root");
+		auto* prefabNode = rootNode ? rootNode->FirstChildElement("prefab") : nullptr;
+		auto* actorsNode = prefabNode ? prefabNode->FirstChildElement("actors") : nullptr;
+		if (!actorsNode)
+		{
+			return serializedGuidsByPrefabNodeGUID;
+		}
+
+		for (auto* actorNode = actorsNode->FirstChildElement("actor");
+			actorNode;
+			actorNode = actorNode->NextSiblingElement("actor"))
+		{
+			const char* serializedGuidText = actorNode->FirstChildElement("guid")
+				? actorNode->FirstChildElement("guid")->GetText()
+				: nullptr;
+			uint64_t serializedGUID = 0;
+			if (!TryParseUInt64(serializedGuidText, serializedGUID))
+			{
+				continue;
+			}
+
+			const char* prefabNodeGuidText = actorNode->FirstChildElement("prefab_node_guid")
+				? actorNode->FirstChildElement("prefab_node_guid")->GetText()
+				: nullptr;
+			uint64_t prefabNodeGUID = 0;
+			if (!TryParseUInt64(prefabNodeGuidText, prefabNodeGUID))
+			{
+				prefabNodeGUID = serializedGUID;
+			}
+
+			serializedGuidsByPrefabNodeGUID[prefabNodeGUID] = serializedGUID;
+		}
+
+		return serializedGuidsByPrefabNodeGUID;
+	}
+
+	void SetActorNodeValue(tinyxml2::XMLDocument& p_doc, tinyxml2::XMLElement& p_actorNode, const char* p_fieldName, const std::string& p_value)
+	{
+		auto* field = p_actorNode.FirstChildElement(p_fieldName);
+
+		if (!field)
+		{
+			field = p_doc.NewElement(p_fieldName);
+			p_actorNode.InsertEndChild(field);
+		}
+
+		field->SetText(p_value.c_str());
+	}
+
+	void RemoveActorComponentsAndBehaviours(OvCore::ECS::Actor& p_actor)
+	{
+		const auto components = p_actor.GetComponents();
+
+		for (const auto& component : components)
+		{
+			if (!dynamic_cast<OvCore::ECS::Components::CTransform*>(component.get()))
+			{
+				p_actor.RemoveComponent(*component);
+			}
+		}
+
+		const auto behaviourNames = p_actor.GetBehavioursOrder();
+
+		for (const auto& behaviourName : behaviourNames)
+		{
+			p_actor.RemoveBehaviour(behaviourName);
+		}
+	}
+
+	void OverwriteActorFromPrefabTemplate(
+		OvCore::ECS::Actor& p_targetActor,
+		OvCore::ECS::Actor& p_templateActor,
+		const std::unordered_map<uint64_t, uint64_t>& p_guidRemap,
+		bool p_preserveName,
+		bool p_preserveLocalTransform)
+	{
+		tinyxml2::XMLDocument doc;
+		auto* actorsNode = doc.NewElement("actors");
+		doc.InsertFirstChild(actorsNode);
+		p_templateActor.OnSerialize(doc, actorsNode);
+
+		auto* actorNode = actorsNode->FirstChildElement("actor");
+		if (!actorNode)
+		{
+			return;
+		}
+
+		RemapActorReferenceGuidsInActorNode(*actorNode, p_guidRemap);
+
+		SetActorNodeValue(doc, *actorNode, "id", std::to_string(p_targetActor.GetID()));
+		SetActorNodeValue(doc, *actorNode, "guid", std::to_string(p_targetActor.GetGUID()));
+		SetActorNodeValue(doc, *actorNode, "parent", std::to_string(p_targetActor.GetParentID()));
+
+		const std::string previousName = p_targetActor.GetName();
+		const auto previousLocalPosition = p_targetActor.transform.GetLocalPosition();
+		const auto previousLocalRotation = p_targetActor.transform.GetLocalRotation();
+		const auto previousLocalScale = p_targetActor.transform.GetLocalScale();
+
+		RemoveActorComponentsAndBehaviours(p_targetActor);
+		p_targetActor.OnDeserialize(doc, actorNode);
+
+		if (p_preserveName)
+		{
+			p_targetActor.SetName(previousName);
+		}
+
+		if (p_preserveLocalTransform)
+		{
+			p_targetActor.transform.SetLocalPosition(previousLocalPosition);
+			p_targetActor.transform.SetLocalRotation(previousLocalRotation);
+			p_targetActor.transform.SetLocalScale(previousLocalScale);
+		}
+	}
 
 	void RefreshMaterialsUsingShader(
 		OvCore::ResourceManagement::MaterialManager& p_materialManager,
@@ -141,6 +400,7 @@ namespace
 			}
 		);
 	}
+
 }
 
 std::string OvEditor::Core::GetBuildTypeName(OvEditor::Core::EBuildType p_buildType)
@@ -225,6 +485,11 @@ bool OvEditor::Core::EditorActions::IsCurrentSceneLoadedFromDisk() const
 
 void OvEditor::Core::EditorActions::SaveSceneChanges()
 {
+	if (m_editorMode != EEditorMode::EDIT)
+	{
+		return;
+	}
+
 	if (IsCurrentSceneLoadedFromDisk())
 	{
 		auto currentScene = m_context.sceneManager.GetCurrentScene();
@@ -242,6 +507,11 @@ void OvEditor::Core::EditorActions::SaveSceneChanges()
 
 void OvEditor::Core::EditorActions::SaveAs()
 {
+	if (m_editorMode != EEditorMode::EDIT)
+	{
+		return;
+	}
+
 	OvWindowing::Dialogs::SaveFileDialog dialog("New Scene");
 	const auto initialPath = m_context.projectAssetsPath / "New Scene";
 	dialog.SetInitialDirectory(initialPath.string());
@@ -471,6 +741,60 @@ void OvEditor::Core::EditorActions::BuildAtLocation(
 						if (!err)
 						{
 							OVLOG_INFO("Game executable renamed to " + executableName);
+
+#if defined(_WIN32)
+							if (const std::string windowIconPath = m_context.projectSettings.GetOrDefault("window_icon", std::string{}); !windowIconPath.empty())
+							{
+								const std::filesystem::path windowIconRealPath{ GetRealPath(windowIconPath) };
+
+								if (!std::filesystem::exists(windowIconRealPath))
+								{
+									OVLOG_WARNING(
+										std::format(
+											"Window icon \"{}\" was not found. Keeping default executable icon.",
+											windowIconRealPath.string()
+										)
+									);
+								}
+								else if (OvRendering::Data::Image iconImage{ windowIconRealPath }; !iconImage)
+								{
+									OVLOG_WARNING(
+										std::format(
+											"Failed to load window icon \"{}\". Keeping default executable icon.",
+											windowIconRealPath.string()
+										)
+									);
+								}
+								else if (iconImage.isHDR)
+								{
+									OVLOG_WARNING(
+										std::format(
+											"Window icon \"{}\" is HDR and cannot be used for executable icons. Keeping default executable icon.",
+											windowIconRealPath.string()
+										)
+									);
+								}
+								else
+								{
+									const size_t iconByteCount = static_cast<size_t>(iconImage.width) * static_cast<size_t>(iconImage.height) * 4u;
+									const auto iconBytes = std::span<const uint8_t>{ static_cast<const uint8_t*>(iconImage.data), iconByteCount };
+									if (!OvTools::Utils::SystemCalls::SetExecutableIcon(
+										p_buildPath / executableName,
+										iconBytes,
+										static_cast<uint32_t>(iconImage.width),
+										static_cast<uint32_t>(iconImage.height)
+									))
+									{
+										OVLOG_WARNING(
+											std::format(
+												"Failed to apply executable icon from \"{}\". Keeping default executable icon.",
+												windowIconRealPath.string()
+											)
+										);
+									}
+								}
+							}
+#endif
 
 							if (p_autoRun)
 							{
@@ -732,8 +1056,6 @@ OvCore::ECS::Actor & OvEditor::Core::EditorActions::CreateEmptyActor(bool p_focu
 	if (p_focusOnCreation)
 		SelectActor(instance);
 
-	OVLOG_INFO("Actor created");
-
 	return instance;
 }
 
@@ -769,7 +1091,6 @@ OvCore::ECS::Actor & OvEditor::Core::EditorActions::CreateActorWithModel(const s
 bool OvEditor::Core::EditorActions::DestroyActor(OvCore::ECS::Actor & p_actor)
 {
 	p_actor.MarkAsDestroy();
-	OVLOG_INFO("Actor destroyed");
 	return true;
 }
 
@@ -787,7 +1108,13 @@ std::string FindDuplicatedActorUniqueName(OvCore::ECS::Actor& p_duplicated, OvCo
     return OvTools::Utils::String::GenerateUnique(p_duplicated.GetName(), availabilityChecker);
 }
 
-void OvEditor::Core::EditorActions::DuplicateActor(OvCore::ECS::Actor & p_toDuplicate, OvCore::ECS::Actor* p_forcedParent, bool p_focus)
+void OvEditor::Core::EditorActions::DuplicateActor
+(
+	OvCore::ECS::Actor& p_toDuplicate,
+	OvCore::ECS::Actor* p_forcedParent,
+	bool p_focus,
+	bool p_keepSourceParentIfNoForcedParent
+)
 {
 	tinyxml2::XMLDocument doc;
 	tinyxml2::XMLNode* actorsRoot = doc.NewElement("actors");
@@ -806,7 +1133,7 @@ void OvEditor::Core::EditorActions::DuplicateActor(OvCore::ECS::Actor & p_toDupl
 	{
 		newActor.SetParent(*p_forcedParent);
 	}
-	else if (newActor.GetParentID() > 0)
+	else if (p_keepSourceParentIfNoForcedParent && newActor.GetParentID() > 0)
 	{
 		if (auto found = currentScene->FindActorByID(newActor.GetParentID()); found)
 		{
@@ -827,6 +1154,173 @@ void OvEditor::Core::EditorActions::DuplicateActor(OvCore::ECS::Actor & p_toDupl
 
 	for (auto& child : p_toDuplicate.GetChildren())
 		DuplicateActor(*child, &newActor, false);
+}
+
+void OvEditor::Core::EditorActions::SaveActorAsPrefab(OvCore::ECS::Actor& p_actor, const std::string& p_path)
+{
+	if (!OvCore::SceneSystem::PrefabOperations::SaveToFile(p_actor, p_path))
+	{
+		OVLOG_ERROR("Failed to save prefab to: " + p_path);
+		return;
+	}
+
+	const std::string prefabSourcePath = GetResourcePath(p_path);
+	OvCore::SceneSystem::PrefabOperations::SetRootPrefabSourceAndNormalizeChildren(p_actor, prefabSourcePath);
+
+	OVLOG_INFO("Prefab saved to: " + p_path);
+}
+
+OvCore::ECS::Actor* OvEditor::Core::EditorActions::InstantiatePrefab(const std::string& p_path)
+{
+	auto* currentScene = m_context.sceneManager.GetCurrentScene();
+	if (!currentScene)
+		return nullptr;
+
+	const std::filesystem::path realPath = GetRealPath(p_path);
+	const bool isEnginePrefab = !p_path.empty() && p_path.front() == ':';
+	return currentScene->InstantiatePrefab(GetResourcePath(realPath.string(), isEnginePrefab));
+}
+
+bool OvEditor::Core::EditorActions::ApplyActorToPrefab(OvCore::ECS::Actor& p_actor)
+{
+	auto* prefabInstanceRoot = ResolvePrefabInstanceRoot(p_actor);
+	if (!prefabInstanceRoot)
+	{
+		OVLOG_ERROR("Cannot apply actor \"" + p_actor.GetName() + "\" to prefab: no source instance.");
+		return false;
+	}
+
+	const std::string realPath = GetRealPath(prefabInstanceRoot->GetPrefabSource());
+
+	if (!OvCore::SceneSystem::PrefabOperations::SaveToFile(*prefabInstanceRoot, realPath))
+	{
+		OVLOG_ERROR("Failed to apply actor \"" + p_actor.GetName() + "\" to prefab: " + realPath);
+		return false;
+	}
+
+	return true;
+}
+
+bool OvEditor::Core::EditorActions::RevertActorToPrefab(OvCore::ECS::Actor& p_actor)
+{
+	auto* prefabInstanceRoot = ResolvePrefabInstanceRoot(p_actor);
+	if (!prefabInstanceRoot)
+	{
+		OVLOG_ERROR("Cannot revert actor \"" + p_actor.GetName() + "\" to prefab: no source instance.");
+		return false;
+	}
+
+	const auto prefabSourcePath = prefabInstanceRoot->GetPrefabSource();
+	const auto serializedGuidsByPrefabNodeGUID =
+		GatherSerializedGuidsByPrefabNodeGUID(GetRealPath(prefabSourcePath));
+
+	auto* prefabTemplateRoot = InstantiatePrefab(prefabSourcePath);
+	if (!prefabTemplateRoot)
+	{
+		return false;
+	}
+
+	std::vector<ActorHierarchyEntry> templateHierarchy;
+	CollectActorHierarchy(*prefabTemplateRoot, nullptr, templateHierarchy);
+
+	std::vector<ActorHierarchyEntry> targetHierarchy;
+	CollectActorHierarchy(*prefabInstanceRoot, nullptr, targetHierarchy);
+
+	std::unordered_map<uint64_t, std::vector<OvCore::ECS::Actor*>> targetActorsByPrefabNodeGUID;
+	for (const auto& entry : targetHierarchy)
+	{
+		const uint64_t prefabNodeGUID = GetPrefabNodeGUIDOrFallback(*entry.actor);
+		targetActorsByPrefabNodeGUID[prefabNodeGUID].push_back(entry.actor);
+	}
+
+	std::unordered_map<OvCore::ECS::Actor*, OvCore::ECS::Actor*> templateToTarget;
+	std::unordered_set<OvCore::ECS::Actor*> usedTargetActors;
+
+	const uint64_t templateRootPrefabNodeGUID = GetPrefabNodeGUIDOrFallback(*prefabTemplateRoot);
+	prefabInstanceRoot->SetPrefabNodeGUID(templateRootPrefabNodeGUID);
+	templateToTarget[prefabTemplateRoot] = prefabInstanceRoot;
+	usedTargetActors.insert(prefabInstanceRoot);
+
+	for (size_t index = 1; index < templateHierarchy.size(); ++index)
+	{
+		auto* templateActor = templateHierarchy[index].actor;
+		const uint64_t prefabNodeGUID = GetPrefabNodeGUIDOrFallback(*templateActor);
+
+		OvCore::ECS::Actor* targetActor = FindUnusedActorWithPrefabNodeGUID(
+			prefabNodeGUID,
+			targetActorsByPrefabNodeGUID,
+			usedTargetActors
+		);
+
+		if (!targetActor)
+		{
+			targetActor = &CreateEmptyActor(false);
+		}
+
+		targetActor->SetPrefabNodeGUID(prefabNodeGUID);
+		templateToTarget[templateActor] = targetActor;
+		usedTargetActors.insert(targetActor);
+	}
+
+	std::unordered_map<uint64_t, uint64_t> templateActorGuidToInstanceGuidMap;
+	for (const auto& [templateActor, targetActor] : templateToTarget)
+	{
+		const uint64_t prefabNodeGUID = templateActor->GetPrefabNodeGUID();
+		const uint64_t targetGUID = targetActor->GetGUID();
+		templateActorGuidToInstanceGuidMap[prefabNodeGUID] = targetGUID;
+
+		if (const auto it = serializedGuidsByPrefabNodeGUID.find(prefabNodeGUID); it != serializedGuidsByPrefabNodeGUID.end())
+		{
+			templateActorGuidToInstanceGuidMap[it->second] = targetGUID;
+		}
+	}
+
+	for (const auto& entry : templateHierarchy)
+	{
+		auto* templateActor = entry.actor;
+		auto* targetActor = templateToTarget[templateActor];
+		const bool isRoot = templateActor == prefabTemplateRoot;
+
+		OverwriteActorFromPrefabTemplate(
+			*targetActor,
+			*templateActor,
+			templateActorGuidToInstanceGuidMap,
+			isRoot, /* keep root name */
+			isRoot  /* keep root local transform */
+		);
+	}
+
+	for (size_t index = 1; index < templateHierarchy.size(); ++index)
+	{
+		auto* templateActor = templateHierarchy[index].actor;
+		auto* templateParent = templateHierarchy[index].parent;
+		auto* targetActor = templateToTarget[templateActor];
+		auto* expectedParent = templateToTarget[templateParent];
+
+		if (targetActor->GetParent() != expectedParent)
+		{
+			targetActor->SetParent(*expectedParent);
+		}
+	}
+
+	for (const auto& entry : targetHierarchy)
+	{
+		auto* targetActor = entry.actor;
+		if (targetActor == prefabInstanceRoot)
+		{
+			continue;
+		}
+
+		if (!usedTargetActors.contains(targetActor))
+		{
+			targetActor->MarkAsDestroy();
+		}
+	}
+
+	prefabTemplateRoot->MarkAsDestroy();
+	SelectActor(*prefabInstanceRoot);
+
+	return true;
 }
 
 void OvEditor::Core::EditorActions::CopyActor(OvCore::ECS::Actor& p_actor)
@@ -854,14 +1348,14 @@ void OvEditor::Core::EditorActions::PasteActor(OvCore::ECS::Actor* p_parent)
 	{
 		auto* destinationParent = p_parent;
 
-		// Pasting on the copied actor itself falls back to its current parent,
-		// preserving the "duplicate-like" behavior by default.
-		if (destinationParent && destinationParent->GetGUID() == copiedActor->GetGUID())
+		// Pasted actors are always inserted next to the target actor (same parent),
+		// never as children.
+		if (destinationParent)
 		{
-			destinationParent = copiedActor->GetParent();
+			destinationParent = destinationParent->GetParent();
 		}
 
-		DuplicateActor(*copiedActor, destinationParent, true);
+		DuplicateActor(*copiedActor, destinationParent, true, false);
 	}
 }
 
@@ -983,8 +1477,16 @@ bool OvEditor::Core::EditorActions::OpenInCodeEditor(const std::filesystem::path
 			return false;
 		}
 
-		OvTools::Utils::String::ReplaceAll(command, "{workdir}", p_workdir ? p_workdir->string() : m_context.projectFolder.string());
-		OvTools::Utils::String::ReplaceAll(command, "{path}", p_path.string());
+		auto preferredWorkdir = p_workdir ? p_workdir.value() : m_context.projectFolder;
+		preferredWorkdir.make_preferred();
+
+		const std::string quotedWorkdir = std::format("\"{}\"", preferredWorkdir.string());
+		const std::string quotedPath = std::format("\"{}\"", preferredPath.string());
+
+		OvTools::Utils::String::ReplaceAll(command, "\"{workdir}\"", "{workdir}");
+		OvTools::Utils::String::ReplaceAll(command, "\"{path}\"", "{path}");
+		OvTools::Utils::String::ReplaceAll(command, "{workdir}", quotedWorkdir);
+		OvTools::Utils::String::ReplaceAll(command, "{path}", quotedPath);
 		if (!OvTools::Utils::SystemCalls::ExecuteCommand(command))
 		{
 			OVLOG_ERROR(std::format("Failed to open in code editor using command: \"{}\"", command));
@@ -1029,6 +1531,7 @@ bool OvEditor::Core::EditorActions::ImportAsset(const std::string& p_initialDest
 
 		SaveFileDialog saveLocationDialog("Where to import?");
 		saveLocationDialog.SetInitialDirectory(p_initialDestinationDirectory);
+		saveLocationDialog.SetInitialFilename(filename);
 		saveLocationDialog.DefineExtension(extension, extension);
 		saveLocationDialog.Show();
 
@@ -1046,6 +1549,42 @@ bool OvEditor::Core::EditorActions::ImportAsset(const std::string& p_initialDest
 	}
 
 	return false;
+}
+
+std::string OvEditor::Core::EditorActions::CreateScript(const std::string& p_initialDirectory, const std::string& p_initialName)
+{
+	using namespace OvWindowing::Dialogs;
+
+	const std::string extension = m_context.scriptEngine->GetDefaultExtension();
+
+	SaveFileDialog dialog("Create Script");
+	dialog.SetInitialDirectory(p_initialDirectory);
+	dialog.SetInitialFilename(p_initialName);
+	dialog.DefineExtension("Script", extension);
+	dialog.Show(
+		EExplorerFlags::DONTADDTORECENT |
+		EExplorerFlags::PATHMUSTEXIST   |
+		EExplorerFlags::HIDEREADONLY    |
+		EExplorerFlags::NOCHANGEDIR
+	);
+
+	if (!dialog.HasSucceeded())
+		return {};
+
+	const std::string destination = dialog.GetSelectedFilePath();
+
+	if (!std::filesystem::exists(destination))
+	{
+		const std::string scriptName = std::filesystem::path{ destination }.stem().string();
+		const std::string fileContent = m_context.scriptEngine->GetDefaultScriptContent(scriptName);
+
+		std::ofstream outfile(destination);
+		outfile << fileContent << std::endl;
+
+		EDITOR_PANEL(Panels::AssetBrowser, "Asset Browser").Refresh();
+	}
+
+	return destination;
 }
 
 bool OvEditor::Core::EditorActions::ImportAssetAtLocation(const std::string& p_destination)
@@ -1085,32 +1624,25 @@ bool OvEditor::Core::EditorActions::ImportAssetAtLocation(const std::string& p_d
 	return false;
 }
 
-// Duplicate from AResourceManager.h
 std::string OvEditor::Core::EditorActions::GetRealPath(const std::string& p_path)
 {
-	std::filesystem::path result;
-
-	const std::string normalizedPath = OvTools::Utils::PathParser::MakeNonWindowsStyle(p_path);
-
-	if (normalizedPath.starts_with(':')) // The path is an engine path
-	{
-		result = m_context.engineAssetsPath / normalizedPath.substr(1);
-	}
-	else // The path is a project path
-	{
-		result = m_context.projectAssetsPath / normalizedPath;
-	}
-
-	return result.lexically_normal().string();
+	return OvTools::Utils::PathParser::GetRealPath(
+		std::filesystem::path{ p_path },
+		m_context.engineAssetsPath,
+		m_context.projectAssetsPath
+	).string();
 }
 
 std::string OvEditor::Core::EditorActions::GetResourcePath(const std::string& p_path, bool p_isFromEngine)
 {
-	std::string result = p_path;
+	// Normalize to forward slashes so the comparison works regardless of whether
+	// the caller or the stored context paths use POSIX or Windows separators.
+	std::string result = std::filesystem::path(p_path).generic_string();
+	const std::string contextPath = (p_isFromEngine ? m_context.engineAssetsPath : m_context.projectAssetsPath).generic_string();
 
-	if (OvTools::Utils::String::Replace(result, p_isFromEngine ? m_context.engineAssetsPath.string() : m_context.projectAssetsPath.string(), ""))
+	if (OvTools::Utils::String::Replace(result, contextPath, ""))
 	{
-		if (result.starts_with(std::filesystem::path::preferred_separator))
+		if (result.starts_with('/'))
 		{
 			result = result.substr(1);
 		}
@@ -1124,19 +1656,18 @@ std::string OvEditor::Core::EditorActions::GetResourcePath(const std::string& p_
 	return result;
 }
 
-std::string OvEditor::Core::EditorActions::GetScriptPath(const std::string & p_path)
+std::string OvEditor::Core::EditorActions::GetScriptPath(const std::string& p_path)
 {
-	std::string result = p_path;
+	// Normalize to forward slashes so the comparison works regardless of separator style.
+	std::string result = std::filesystem::path(p_path).generic_string();
+	const std::string contextPath = m_context.projectAssetsPath.generic_string();
 
-	OvTools::Utils::String::Replace(result, m_context.projectAssetsPath.string(), "");
+	OvTools::Utils::String::Replace(result, contextPath, "");
 
-	if (result.starts_with(std::filesystem::path::preferred_separator))
+	if (result.starts_with('/'))
 	{
 		result = result.substr(1);
 	}
-
-	// Normalize to forward slashes for cross-platform consistency
-	std::replace(result.begin(), result.end(), '\\', '/');
 
 	return result;
 }
@@ -1174,7 +1705,7 @@ void OvEditor::Core::EditorActions::PropagateFolderDestruction(std::string p_fol
 	{
 		if (!p.is_directory())
 		{
-			PropagateFileRename(OvTools::Utils::PathParser::MakeWindowsStyle(p.path().string()), "?");
+			PropagateFileRename(OvTools::Utils::PathParser::MakeNonWindowsStyle(p.path().string()), "?");
 		}
 	}
 }
@@ -1284,6 +1815,7 @@ void OvEditor::Core::EditorActions::MigrateScripts()
 		const auto newRelPath = (std::filesystem::path("Scripts") / scriptName).generic_string();
 
 		PropagateFileRenameThroughSavedFilesOfType(stem, newRelPath, OvTools::Utils::PathParser::EFileType::SCENE);
+		PropagateFileRenameThroughSavedFilesOfType(stem, newRelPath, OvTools::Utils::PathParser::EFileType::PREFAB);
 	}
 
 	OVLOG_INFO("Scene files updated with new script paths");
@@ -1443,6 +1975,7 @@ void OvEditor::Core::EditorActions::PropagateFileRename(std::string p_previousNa
 		if (next != "?")
 		{
 			PropagateFileRenameThroughSavedFilesOfType(prev, next, OvTools::Utils::PathParser::EFileType::SCENE);
+			PropagateFileRenameThroughSavedFilesOfType(prev, next, OvTools::Utils::PathParser::EFileType::PREFAB);
 		}
 
 		EDITOR_PANEL(Panels::Inspector, "Inspector").Refresh();
@@ -1450,9 +1983,11 @@ void OvEditor::Core::EditorActions::PropagateFileRename(std::string p_previousNa
 	}
 	case OvTools::Utils::PathParser::EFileType::MATERIAL:
 		PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::SCENE);
+		PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::PREFAB);
 		break;
 	case OvTools::Utils::PathParser::EFileType::MODEL:
 		PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::SCENE);
+		PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::PREFAB);
 		PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::MATERIAL);
 		break;
 	case OvTools::Utils::PathParser::EFileType::SHADER:
@@ -1463,6 +1998,22 @@ void OvEditor::Core::EditorActions::PropagateFileRename(std::string p_previousNa
 		break;
 	case OvTools::Utils::PathParser::EFileType::SOUND:
 		PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::SCENE);
+		PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::PREFAB);
+		break;
+	case OvTools::Utils::PathParser::EFileType::PREFAB:
+		if (auto currentScene = m_context.sceneManager.GetCurrentScene())
+		{
+			for (auto actor : currentScene->GetActors())
+			{
+				if (actor->GetPrefabSource() == p_previousName)
+				{
+					actor->SetPrefabSource(p_newName);
+				}
+			}
+		}
+
+		PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::SCENE);
+		PropagateFileRenameThroughSavedFilesOfType(p_previousName, p_newName, OvTools::Utils::PathParser::EFileType::PREFAB);
 		break;
 	default:
 		break;

@@ -17,6 +17,7 @@
 #include <OvCore/Scripting/ScriptEngine.h>
 #include <OvCore/ECS/Components/Behaviour.h>
 #include <OvCore/ECS/Actor.h>
+#include <OvTools/Utils/String.h>
 
 void BindLuaActor(sol::state& p_state);
 void BindLuaComponents(sol::state& p_state);
@@ -26,14 +27,6 @@ void BindLuaProfiler(sol::state& p_state);
 
 namespace
 {
-	constexpr auto luaBindings = std::array{
-		BindLuaActor,
-		BindLuaComponents,
-		BindLuaGlobal,
-		BindLuaMath,
-		BindLuaProfiler
-	};
-
 	template<typename... Args>
 	void ExecuteLuaFunction(OvCore::ECS::Components::Behaviour& p_behaviour, const std::string& p_functionName, Args&& ...p_args)
 	{
@@ -44,15 +37,22 @@ namespace
 
 		const sol::table& table = *static_cast<OvCore::Scripting::LuaScript&>(context.value()).GetContext().table;
 
-		if (table[p_functionName].valid())
+		try
 		{
-			sol::protected_function pfr = table[p_functionName];
-			auto pfrResult = pfr.call(table, std::forward<Args>(p_args)...);
-			if (!pfrResult.valid())
+			if (table[p_functionName].valid())
 			{
-				sol::error err = pfrResult;
-				OVLOG_ERROR(err.what());
+				sol::protected_function pfr = table[p_functionName];
+				auto pfrResult = pfr.call(table, std::forward<Args>(p_args)...);
+				if (!pfrResult.valid())
+				{
+					sol::error err = pfrResult;
+					OVLOG_ERROR(err.what());
+				}
 			}
+		}
+		catch (const sol::error& p_error)
+		{
+			OVLOG_ERROR(p_error.what());
 		}
 	}
 
@@ -173,19 +173,22 @@ std::unordered_set<std::string> OvCore::Scripting::LuaScriptEngineBase::GetValid
 template<>
 std::string OvCore::Scripting::LuaScriptEngineBase::GetDefaultScriptContent(const std::string& p_name)
 {
+	std::string scriptTableName = p_name;
+	OvTools::Utils::String::ReplaceAll(scriptTableName, " ", "_");
+
 	return
-		"---@class " + p_name + " : Behaviour\n"
-		"local " + p_name + " =\n"
+		"---@class " + scriptTableName + " : Behaviour\n"
+		"local " + scriptTableName + " =\n"
 		"{\n"
 		"}\n"
 		"\n"
-		"function " + p_name + ":OnStart()\n"
+		"function " + scriptTableName + ":OnStart()\n"
 		"end\n"
 		"\n"
-		"function " + p_name + ":OnUpdate(deltaTime)\n"
+		"function " + scriptTableName + ":OnUpdate(deltaTime)\n"
 		"end\n"
 		"\n"
-		"return " + p_name;
+		"return " + scriptTableName;
 }
 
 template<>
@@ -344,10 +347,11 @@ void OvCore::Scripting::LuaScriptEngine::CreateContext()
 	m_context.luaState = std::make_unique<sol::state>();
 	m_context.luaState->open_libraries(sol::lib::base, sol::lib::math);
 
-	for (auto& callback : luaBindings)
-	{
-		callback(*m_context.luaState);
-	}
+	BindLuaActor(*m_context.luaState);
+	BindLuaComponents(*m_context.luaState);
+	BindLuaGlobal(*m_context.luaState);
+	BindLuaMath(*m_context.luaState);
+	BindLuaProfiler(*m_context.luaState);
 
 	m_context.errorCount = 0;
 

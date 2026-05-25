@@ -17,6 +17,7 @@
 #include <OvTools/Utils/PathParser.h>
 #include <OvTools/Utils/SystemCalls.h>
 
+#include <OvUI/Styling/Style.h>
 #include <OvUI/Widgets/Buttons/Button.h>
 #include <OvUI/Widgets/InputFields/InputText.h>
 #include <OvUI/Widgets/Layout/Columns.h>
@@ -64,8 +65,12 @@ namespace OvEditor::Core
 
 			_UpdateGoButton({});
 
-			openProjectButton.idleBackgroundColor = { 0.7f, 0.5f, 0.f };
-			newProjectButton.idleBackgroundColor = { 0.f, 0.5f, 0.0f };
+			openProjectButton.backgroundColor = OVUI_STYLE(WarningButton);
+			openProjectButton.hoveredBackgroundColor = OVUI_STYLE(WarningButtonHovered);
+			openProjectButton.clickedBackgroundColor = OVUI_STYLE(WarningButtonActive);
+			newProjectButton.backgroundColor = OVUI_STYLE(SuccessButton);
+			newProjectButton.hoveredBackgroundColor = OVUI_STYLE(SuccessButtonHovered);
+			newProjectButton.clickedBackgroundColor = OVUI_STYLE(SuccessButtonActive);
 
 			openProjectButton.ClickedEvent += [this] {
 				OvWindowing::Dialogs::OpenFileDialog dialog("Open project");
@@ -136,8 +141,12 @@ namespace OvEditor::Core
 				auto& openButton = actions.CreateWidget<OvUI::Widgets::Buttons::Button>("Open");
 				auto& deleteButton = actions.CreateWidget<OvUI::Widgets::Buttons::Button>("Delete");
 
-				openButton.idleBackgroundColor = { 0.7f, 0.5f, 0.f };
-				deleteButton.idleBackgroundColor = { 0.5f, 0.f, 0.f };
+				openButton.backgroundColor = OVUI_STYLE(WarningButton);
+				openButton.hoveredBackgroundColor = OVUI_STYLE(WarningButtonHovered);
+				openButton.clickedBackgroundColor = OVUI_STYLE(WarningButtonActive);
+				deleteButton.backgroundColor = OVUI_STYLE(DangerButton);
+				deleteButton.hoveredBackgroundColor = OVUI_STYLE(DangerButtonHovered);
+				deleteButton.clickedBackgroundColor = OVUI_STYLE(DangerButtonActive);
 
 				openButton.ClickedEvent += [this, &text, &actions, project] {
 					if (!_TryFinish({ project }))
@@ -174,7 +183,9 @@ namespace OvEditor::Core
 		void _UpdateGoButton(const std::string& p_path)
 		{
 			const bool validPath = !p_path.empty();
-			m_goButton->idleBackgroundColor = validPath ? OvUI::Types::Color{ 0.f, 0.5f, 0.0f } : OvUI::Types::Color{ 0.1f, 0.1f, 0.1f };
+			m_goButton->backgroundColor = validPath ? OVUI_STYLE(SuccessButton) : OVUI_STYLE(Button);
+			m_goButton->hoveredBackgroundColor = validPath ? OVUI_STYLE(SuccessButtonHovered) : OVUI_STYLE(ButtonHovered);
+			m_goButton->clickedBackgroundColor = validPath ? OVUI_STYLE(SuccessButtonActive) : OVUI_STYLE(ButtonActive);
 			m_goButton->disabled = !validPath;
 		}
 
@@ -312,10 +323,10 @@ void OvEditor::Core::ProjectHub::SetupContext()
 		static_cast<OvUI::Styling::EStyle>(OvEditor::Settings::EditorSettings::ColorTheme.Get())
 	);
 
-	const auto fontPath = std::filesystem::current_path() / "Data" / "Editor" / "Fonts" / "Ruda-Bold.ttf";
+	const auto fontPath = std::filesystem::current_path() / "Data" / "Editor" / "Fonts" / "Roboto-Regular.ttf";
 
-	m_uiManager->LoadFont("Ruda-Bold", fontPath.string(), 18);
-	m_uiManager->UseFont("Ruda-Bold");
+	m_uiManager->LoadFont("Roboto", fontPath.string(), 18.0f);
+	m_uiManager->UseFont("Roboto");
 	const int uiScale = Settings::EditorSettings::UIScale.Get();
 	m_uiManager->SetScale(uiScale == 0 ? std::nullopt : std::make_optional(uiScale / 100.0f));
 	m_uiManager->EnableEditorLayoutSave(false);

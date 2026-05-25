@@ -140,6 +140,43 @@ uint64_t OvCore::ECS::Actor::GetGUID() const
 	return m_guid;
 }
 
+void OvCore::ECS::Actor::SetPrefabSource(const std::string& p_prefabSource)
+{
+	if (p_prefabSource == "?")
+	{
+		m_prefabSource.clear();
+	}
+	else
+	{
+		m_prefabSource = p_prefabSource;
+	}
+}
+
+const std::string& OvCore::ECS::Actor::GetPrefabSource() const
+{
+	return m_prefabSource;
+}
+
+bool OvCore::ECS::Actor::HasPrefabSource() const
+{
+	return !m_prefabSource.empty();
+}
+
+void OvCore::ECS::Actor::SetPrefabNodeGUID(uint64_t p_prefabNodeGUID)
+{
+	m_prefabNodeGUID = p_prefabNodeGUID;
+}
+
+uint64_t OvCore::ECS::Actor::GetPrefabNodeGUID() const
+{
+	return m_prefabNodeGUID;
+}
+
+bool OvCore::ECS::Actor::HasPrefabNodeGUID() const
+{
+	return m_prefabNodeGUID != 0;
+}
+
 void OvCore::ECS::Actor::SetParent(Actor& p_parent)
 {
 	DetachFromParent();
@@ -208,6 +245,30 @@ int64_t OvCore::ECS::Actor::GetParentID() const
 std::vector<OvCore::ECS::Actor*>& OvCore::ECS::Actor::GetChildren()
 {
 	return m_children;
+}
+
+OvCore::ECS::Actor* OvCore::ECS::Actor::FindChild(const std::string& p_name, bool p_recursive) const
+{
+	for (auto child : m_children)
+	{
+		if (child->GetName() == p_name)
+		{
+			return child;
+		}
+	}
+
+	if (p_recursive)
+	{
+		for (auto child : m_children)
+		{
+			if (auto found = child->FindChild(p_name, true); found)
+			{
+				return found;
+			}
+		}
+	}
+
+	return nullptr;
 }
 
 void OvCore::ECS::Actor::MarkAsDestroy()
@@ -349,7 +410,7 @@ OvCore::ECS::Components::Behaviour & OvCore::ECS::Actor::AddBehaviour(const std:
 	m_behavioursOrder.push_back(p_name);
 	Components::Behaviour& newInstance = m_behaviours.at(p_name);
 	BehaviourAddedEvent.Invoke(newInstance);
-	if (m_playing && IsActive())
+	if (m_playing && !m_sleeping && IsActive())
 	{
 		newInstance.OnAwake();
 		newInstance.OnEnable();
@@ -382,9 +443,10 @@ bool OvCore::ECS::Actor::RemoveBehaviour(const std::string & p_name)
 	Components::Behaviour* found = GetBehaviour(p_name);
 	if (found)
 	{
+		const std::string nameCopy = p_name;
 		BehaviourRemovedEvent.Invoke(*found);
 		m_behaviours.erase(p_name);
-		auto it = std::find(m_behavioursOrder.begin(), m_behavioursOrder.end(), p_name);
+		auto it = std::find(m_behavioursOrder.begin(), m_behavioursOrder.end(), nameCopy);
 		if (it != m_behavioursOrder.end())
 			m_behavioursOrder.erase(it);
 		return true;
@@ -413,7 +475,7 @@ bool OvCore::ECS::Actor::RenameBehaviour(const std::string& p_previousName, cons
 	m_behaviours.try_emplace(p_newName, *this, p_newName);
 	Components::Behaviour& newInstance = m_behaviours.at(p_newName);
 	BehaviourAddedEvent.Invoke(newInstance);
-	if (m_playing && IsActive())
+	if (m_playing && !m_sleeping && IsActive())
 	{
 		newInstance.OnAwake();
 		newInstance.OnEnable();
@@ -450,6 +512,8 @@ void OvCore::ECS::Actor::OnSerialize(tinyxml2::XMLDocument & p_doc, tinyxml2::XM
 	OvCore::Helpers::Serializer::SerializeBoolean(p_doc, actorNode, "active", m_active);
 	OvCore::Helpers::Serializer::SerializeInt64(p_doc, actorNode, "id", m_actorID);
 	OvCore::Helpers::Serializer::SerializeUInt64(p_doc, actorNode, "guid", m_guid);
+	OvCore::Helpers::Serializer::SerializeString(p_doc, actorNode, "prefab_source", m_prefabSource);
+	OvCore::Helpers::Serializer::SerializeUInt64(p_doc, actorNode, "prefab_node_guid", m_prefabNodeGUID);
 	OvCore::Helpers::Serializer::SerializeInt64(p_doc, actorNode, "parent", m_parentID);
 
 	tinyxml2::XMLNode* componentsNode = p_doc.NewElement("components");
@@ -504,6 +568,12 @@ void OvCore::ECS::Actor::OnDeserialize(tinyxml2::XMLDocument & p_doc, tinyxml2::
 	OvCore::Helpers::Serializer::DeserializeBoolean(p_doc, p_actorsRoot, "active", m_active);
 	OvCore::Helpers::Serializer::DeserializeInt64(p_doc, p_actorsRoot, "id", m_actorID);
 	OvCore::Helpers::Serializer::DeserializeUInt64(p_doc, p_actorsRoot, "guid", m_guid);
+	std::string prefabSource;
+	OvCore::Helpers::Serializer::DeserializeString(p_doc, p_actorsRoot, "prefab_source", prefabSource);
+	SetPrefabSource(prefabSource);
+	uint64_t prefabNodeGUID = 0;
+	OvCore::Helpers::Serializer::DeserializeUInt64(p_doc, p_actorsRoot, "prefab_node_guid", prefabNodeGUID);
+	SetPrefabNodeGUID(prefabNodeGUID);
 	OvCore::Helpers::Serializer::DeserializeInt64(p_doc, p_actorsRoot, "parent", m_parentID);
 
 	{

@@ -19,7 +19,6 @@
 #define EDITOR_EVENT(target) OvCore::Global::ServiceLocator::Get<OvEditor::Core::EditorActions>().target
 #define EDITOR_CONTEXT(instance) OvCore::Global::ServiceLocator::Get<OvEditor::Core::EditorActions>().GetContext().instance
 #define EDITOR_PANEL(type, id) OvCore::Global::ServiceLocator::Get<OvEditor::Core::EditorActions>().GetPanelsManager().GetPanelAs<type>(id)
-#define EDITOR_UI_SCALE EDITOR_CONTEXT(uiManager)->GetScale()
 
 namespace tinyxml2
 {
@@ -223,9 +222,44 @@ namespace OvEditor::Core
 		* Duplicate an actor
 		* @param p_toDuplicate
 		* @param p_forcedParent
-		* @param bool
+		* @param p_focus
+		* @param p_keepSourceParentIfNoForcedParent
 		*/
-		void DuplicateActor(OvCore::ECS::Actor& p_toDuplicate, OvCore::ECS::Actor* p_forcedParent = nullptr, bool p_focus = true);
+		void DuplicateActor
+		(
+			OvCore::ECS::Actor& p_toDuplicate,
+			OvCore::ECS::Actor* p_forcedParent = nullptr,
+			bool p_focus = true,
+			bool p_keepSourceParentIfNoForcedParent = true
+		);
+
+		/**
+		* Save an actor hierarchy to a prefab file
+		* @param p_actor
+		* @param p_path
+		*/
+		void SaveActorAsPrefab(OvCore::ECS::Actor& p_actor, const std::string& p_path);
+
+		/**
+		* Instantiate a prefab file in the current scene
+		* @param p_path
+		*/
+		OvCore::ECS::Actor* InstantiatePrefab(const std::string& p_path);
+
+		/**
+		* Apply the current actor hierarchy state to its prefab source.
+		* Returns true on success.
+		* @param p_actor
+		*/
+		bool ApplyActorToPrefab(OvCore::ECS::Actor& p_actor);
+
+		/**
+		* Revert an actor hierarchy from its prefab source.
+		* Keeps existing actor GUIDs to preserve scene/script references.
+		* Returns true on success.
+		* @param p_actor
+		*/
+		bool RevertActorToPrefab(OvCore::ECS::Actor& p_actor);
 		#pragma endregion
 
 		#pragma region ACTOR_MANIPULATION
@@ -236,7 +270,8 @@ namespace OvEditor::Core
 		void CopyActor(OvCore::ECS::Actor& p_actor);
 
 		/**
-		* Paste the copied actor, optionally as a child of the given parent
+		* Paste the copied actor next to the given actor (same parent), or at root if null.
+		* If the target actor is at root, the pasted actor is also pasted at root.
 		* @param p_parent
 		*/
 		void PasteActor(OvCore::ECS::Actor* p_parent = nullptr);
@@ -311,6 +346,14 @@ namespace OvEditor::Core
 		* @param p_initialDestinationDirectory
 		*/
 		bool ImportAsset(const std::string& p_initialDestinationDirectory);
+
+		/**
+		* Open a save dialog to create a new script file at a user-chosen location.
+		* Returns the absolute path of the created script, or empty on cancellation.
+		* @param p_initialDirectory  Directory the dialog opens in
+		* @param p_initialName       Suggested filename (without extension)
+		*/
+		std::string CreateScript(const std::string& p_initialDirectory, const std::string& p_initialName);
 
 		/**
 		* Import an asset at location
